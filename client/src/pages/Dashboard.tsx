@@ -134,7 +134,7 @@ export default function Dashboard() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-neutral-900 mb-2 font-bold">Dashboard Overview</h1>
+        <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Dashboard Overview</h1>
         <p className="text-neutral-600 font-medium">Welcome to your church management system</p>
       </div>
 
@@ -144,12 +144,7 @@ export default function Dashboard() {
           onClick={() => navigate('/members')}
           className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-primary-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary-500/10"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center group-hover:bg-primary-100 transition-colors">
-              <Users className="w-6 h-6 text-primary-600" />
-            </div>
-            <ArrowUpRight className="w-5 h-5 text-neutral-400 group-hover:text-primary-500 transition-colors" />
-          </div>
+          
           <p className="text-3xl text-neutral-900 mb-1 font-bold">{members.length}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Total Members</p>
           <p className="text-xs text-neutral-500 font-medium">{activeMembers} active members</p>
@@ -159,12 +154,7 @@ export default function Dashboard() {
           onClick={() => navigate('/programs')}
           className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-accent-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-accent-500/10"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-accent-50 rounded-xl flex items-center justify-center group-hover:bg-accent-100 transition-colors">
-              <Calendar className="w-6 h-6 text-accent-600" />
-            </div>
-            <ArrowUpRight className="w-5 h-5 text-neutral-400 group-hover:text-accent-500 transition-colors" />
-          </div>
+          
           <p className="text-3xl text-neutral-900 mb-1 font-bold">{upcomingPrograms.length}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Upcoming Programs</p>
           <p className="text-xs text-neutral-500 font-medium">{programs.length} total programs</p>
@@ -174,12 +164,7 @@ export default function Dashboard() {
           onClick={() => navigate('/finance')}
           className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-success-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-success-500/10"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-success-50 rounded-xl flex items-center justify-center group-hover:bg-success-100 transition-colors">
-              <DollarSign className="w-6 h-6 text-success-600" />
-            </div>
-            <ArrowUpRight className="w-5 h-5 text-neutral-400 group-hover:text-success-500 transition-colors" />
-          </div>
+          
           <p className="text-3xl text-neutral-900 mb-1 font-bold">GH₵ {totalDonations.toLocaleString()}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Total Income</p>
           <p className="text-xs text-neutral-500 font-medium">{donations.length} transactions</p>
@@ -189,12 +174,7 @@ export default function Dashboard() {
           onClick={() => navigate('/finance')}
           className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-danger-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-danger-500/10"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-danger-50 rounded-xl flex items-center justify-center group-hover:bg-danger-100 transition-colors">
-              <TrendingDown className="w-6 h-6 text-danger-600" />
-            </div>
-            <ArrowUpRight className="w-5 h-5 text-neutral-400 group-hover:text-danger-500 transition-colors" />
-          </div>
+          
           <p className="text-3xl text-neutral-900 mb-1 font-bold">GH₵ {totalExpenditures.toLocaleString()}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Total Expenses</p>
           <p className="text-xs text-neutral-500 font-medium">{expenditures.length} transactions</p>
@@ -219,11 +199,11 @@ export default function Dashboard() {
               <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-100 overflow-y-auto pr-2">
             {upcomingPrograms.length > 0 ? (
               upcomingPrograms.map((program) => (
                 <div key={program.id} className="flex items-start gap-4 p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors">
-                  <div className="w-12 h-12 bg-gradient-to-br from-accent-400 to-accent-500 rounded-xl flex flex-col items-center justify-center text-white flex-shrink-0">
+                  <div className="w-12 h-12 bg-linear-to-br from-accent-400 to-accent-500 rounded-xl flex flex-col items-center justify-center text-white shrink-0">
                     <span className="text-xs font-semibold">{new Date(program.date).toLocaleDateString('en-US', { month: 'short' })}</span>
                     <span className="text-lg font-bold leading-none">{new Date(program.date).getDate()}</span>
                   </div>
@@ -265,7 +245,7 @@ export default function Dashboard() {
               </span>
             )}
           </div>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-100 overflow-y-auto pr-2">
             {birthdaysThisMonth.length > 0 ? (
               birthdaysThisMonth.map((member) => {
                 const dob = new Date(member.dateOfBirth);
@@ -275,9 +255,9 @@ export default function Dashboard() {
                 
                 return (
                   <div key={member.id} className={`flex items-center gap-4 p-4 rounded-xl ${
-                    isToday ? 'bg-gradient-to-r from-warning-100 to-accent-100 border-2 border-warning-300' : 'bg-gradient-to-r from-warning-50 to-accent-50'
+                    isToday ? 'bg-gray-50 text-gray-700 border-2 border-warning-300' : 'bg-gray-50 from-warning-50 to-accent-50 text-gray-700'
                   }`}>
-                    <div className="w-12 h-12 bg-gradient-to-br from-warning-400 to-warning-500 rounded-xl flex flex-col items-center justify-center text-white flex-shrink-0">
+                    <div className="w-12 h-12  from-warning-400 to-warning-500 rounded-xl flex flex-col items-center justify-center text-gray-700 shrink-0">
                       <span className="text-xs font-semibold">{birthMonth}</span>
                       <span className="text-lg font-bold leading-none">{birthDate}</span>
                     </div>

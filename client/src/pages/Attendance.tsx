@@ -73,12 +73,12 @@ export function Attendance() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-2">Attendance Management</h1>
+            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Attendance Management</h1>
             <p className="text-neutral-600">Track member attendance for programs and events</p>
           </div>
           <button
             onClick={() => setShowMarkModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Mark Attendance
@@ -86,36 +86,36 @@ export function Attendance() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-info-500 to-info-600 rounded-xl p-6 text-white">
+          <div className=" border border-gray-200 from-info-500 to-info-600  p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
             <div className="flex items-center justify-between mb-2">
-              <UserCheck className="w-8 h-8 text-white/80" />
+              <UserCheck className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{attendance.length}</p>
-            <p className="text-sm text-white/80">Total Records</p>
+            <p className="text-sm text-gray-500">Total Records</p>
           </div>
 
-          <div className="bg-gradient-to-br from-success-500 to-success-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 from-info-500 to-info-600  p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle2 className="w-8 h-8 text-white/80" />
+              <CheckCircle2 className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{attendance.filter(a => a.status === 'present').length}</p>
-            <p className="text-sm text-white/80">Present</p>
+            <p className="text-sm text-gray-500">Present</p>
           </div>
 
-          <div className="bg-gradient-to-br from-danger-500 to-danger-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 from-info-500 to-info-600  p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
             <div className="flex items-center justify-between mb-2">
-              <XCircle className="w-8 h-8 text-white/80" />
+              <XCircle className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{attendance.filter(a => a.status === 'absent').length}</p>
-            <p className="text-sm text-white/80">Absent</p>
+            <p className="text-sm text-gray-500">Absent</p>
           </div>
 
-          <div className="bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 from-info-500 to-info-600  p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
             <div className="flex items-center justify-between mb-2">
-              <TrendingUp className="w-8 h-8 text-white/80" />
+              <TrendingUp className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{overallAttendanceRate.toFixed(0)}%</p>
-            <p className="text-sm text-white/80">Attendance Rate</p>
+            <p className="text-sm text-gray-500">Attendance Rate</p>
           </div>
         </div>
       </div>
@@ -391,7 +391,7 @@ function MarkAttendanceModal({
           <div className="p-6 border-t border-neutral-200 flex items-center gap-3">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all"
+              className="flex-1 bg-blue-900 from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all"
             >
               Save Attendance ({attendanceData.size} records)
             </button>

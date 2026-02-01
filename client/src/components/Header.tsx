@@ -86,11 +86,11 @@ export function Header() {
               setShowNotifications(!showNotifications);
               setShowDropdown(false);
             }}
-            className="relative p-2.5 text-neutral-500 hover:bg-neutral-100 rounded-xl transition-all"
+            className="relative p-2.5 text-neutral-500 bg-gray-200 hover:bg-neutral-100 rounded-xl transition-all"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+              <span className="absolute top-1.5 right-1.5 min-w-4.5 h-4.5 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -102,7 +102,7 @@ export function Header() {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowNotifications(false)}
               ></div>
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-xl border border-neutral-200 z-20 max-h-[600px] flex flex-col">
+              <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-xl border border-neutral-200 z-20 max-h-150 flex flex-col">
                 <div className="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
                   <div>
                     <h3 className="text-neutral-900 font-semibold">Notifications</h3>
@@ -131,12 +131,12 @@ export function Header() {
                           }`}
                         >
                           <div className="flex items-start gap-3">
-                            <span className="text-2xl flex-shrink-0">{getNotificationIcon(notification.type)}</span>
+                            <span className="text-2xl shrink-0">{getNotificationIcon(notification.type)}</span>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2 mb-1">
                                 <p className="text-sm text-neutral-900 font-semibold">{notification.title}</p>
                                 {!notification.isRead && (
-                                  <span className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-1"></span>
+                                  <span className="w-2 h-2 bg-primary-500 rounded-full shrink-0 mt-1"></span>
                                 )}
                               </div>
                               <p className="text-sm text-neutral-600 font-medium line-clamp-2 mb-1">
@@ -174,7 +174,7 @@ export function Header() {
             }}
             className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-neutral-50 transition-all"
           >
-            <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 bg-blue-900 from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-sm">
               <span className="text-white text-sm font-semibold">{user?.name.charAt(0)}</span>
             </div>
             <div className="text-left">

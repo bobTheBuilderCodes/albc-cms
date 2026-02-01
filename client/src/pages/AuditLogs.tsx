@@ -120,7 +120,7 @@ export function AuditLogs() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-2">Audit Trail</h1>
+            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Audit Trail</h1>
             <p className="text-neutral-600">Track all system activities and changes</p>
           </div>
           <button
@@ -133,28 +133,28 @@ export function AuditLogs() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-primary-500 to-primary-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <FileText className="w-8 h-8 text-white/80" />
+              <FileText className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{logs.length}</p>
-            <p className="text-sm text-white/80">Total Activities</p>
+            <p className="text-sm text-gray-500">Total Activities</p>
           </div>
 
-          <div className="bg-gradient-to-br from-info-500 to-info-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-info-500  to-info-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <User className="w-8 h-8 text-white/80" />
+              <User className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{uniqueUsers.length}</p>
-            <p className="text-sm text-white/80">Active Users</p>
+            <p className="text-sm text-gray-500">Active Users</p>
           </div>
 
-          <div className="bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-accent-500 to-accent-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <Shield className="w-8 h-8 text-white/80" />
+              <Shield className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1">{filteredLogs.length}</p>
-            <p className="text-sm text-white/80">Filtered Results</p>
+            <p className="text-sm text-gray-500">Filtered Results</p>
           </div>
         </div>
       </div>

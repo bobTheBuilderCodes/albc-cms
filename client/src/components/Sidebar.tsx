@@ -32,7 +32,7 @@ export function Sidebar() {
     <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-neutral-200 flex flex-col shadow-sm transition-all duration-300`}>
       <div className={`p-6 border-b border-neutral-200 ${isCollapsed ? 'px-4' : ''}`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <div className="w-11 h-11 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20 flex-shrink-0">
+          <div className="w-11 h-11 bg-blue-700 from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/20 flex-shrink-0">
             <Church className="w-6 h-6 text-white" />
           </div>
           {!isCollapsed && (
@@ -53,7 +53,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `flex items-center ${isCollapsed ? 'justify-center px-3' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 group relative ${
                 isActive
-                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
+                  ? 'bg-blue-900 from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25'
                   : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
               }`
             }

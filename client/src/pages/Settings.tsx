@@ -151,9 +151,9 @@ export function Settings() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-neutral-900 mb-2">Settings</h1>
+        <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Settings</h1>
         <p className="text-neutral-600">Manage your church management system settings</p>
       </div>
 
@@ -165,7 +165,7 @@ export function Settings() {
               <SettingsIcon className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <h3 className="text-neutral-900">Church Information</h3>
+              <h3 className="text-neutral-900 font-semibold">Church Information</h3>
               <p className="text-sm text-neutral-600">Basic information about your church</p>
             </div>
           </div>
@@ -220,7 +220,7 @@ export function Settings() {
               <Bell className="w-5 h-5 text-info-600" />
             </div>
             <div>
-              <h3 className="text-neutral-900">Notification Settings</h3>
+              <h3 className="text-neutral-900 font-semibold">Notification Settings</h3>
               <p className="text-sm text-neutral-600">Configure automatic SMS notifications</p>
             </div>
           </div>
@@ -238,7 +238,7 @@ export function Settings() {
                   onChange={(e) => setSettings({ ...settings, enableBirthdayNotifications: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
               </label>
             </div>
 
@@ -254,7 +254,7 @@ export function Settings() {
                   onChange={(e) => setSettings({ ...settings, enableProgramReminders: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
               </label>
             </div>
 
@@ -270,7 +270,7 @@ export function Settings() {
                   onChange={(e) => setSettings({ ...settings, enableMemberAddedNotifications: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
               </label>
             </div>
 
@@ -286,7 +286,7 @@ export function Settings() {
                   onChange={(e) => setSettings({ ...settings, enableDonationNotifications: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
               </label>
             </div>
 
@@ -316,7 +316,7 @@ export function Settings() {
               <Shield className="w-5 h-5 text-accent-600" />
             </div>
             <div>
-              <h3 className="text-neutral-900">SMS Gateway Configuration</h3>
+              <h3 className="text-neutral-900 font-semibold">SMS Gateway Configuration</h3>
               <p className="text-sm text-neutral-600">Configure your SMS service provider</p>
             </div>
           </div>
@@ -441,7 +441,7 @@ export function Settings() {
             />
             <button
               onClick={handleAddDepartment}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors font-semibold"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-900 hover:bg-primary-700 text-white rounded-lg transition-colors font-semibold"
             >
               <Plus className="w-4 h-4" />
               Add
@@ -449,41 +449,13 @@ export function Settings() {
           </div>
         </div>
 
-        {/* Data Management */}
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-danger-100 rounded-lg flex items-center justify-center">
-              <Database className="w-5 h-5 text-danger-600" />
-            </div>
-            <div>
-              <h3 className="text-neutral-900">Data Management</h3>
-              <p className="text-sm text-neutral-600">Manage your system data</p>
-            </div>
-          </div>
-
-          <div className="bg-danger-50 border border-danger-200 rounded-lg p-4">
-            <div className="flex items-start gap-3 mb-4">
-              <AlertTriangle className="w-5 h-5 text-danger-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-danger-800">
-                <p className="font-semibold mb-1">Danger Zone</p>
-                <p>Clearing data will permanently delete all members, programs, donations, and logs. This action cannot be undone.</p>
-              </div>
-            </div>
-            <button
-              onClick={clearAllData}
-              className="flex items-center gap-2 px-4 py-2 bg-danger-600 text-white rounded-lg hover:bg-danger-700 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Clear All Data
-            </button>
-          </div>
-        </div>
+     
 
         {/* Save Button */}
         <div className="flex items-center gap-4">
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+            className="flex items-center gap-2 px-6 py-3 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Save className="w-5 h-5" />
             Save Settings

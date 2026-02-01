@@ -110,12 +110,12 @@ export function Finance() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-2">Finance Management</h1>
+            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Finance Management</h1>
             <p className="text-neutral-600">Track income and expenditures</p>
           </div>
           <button
             onClick={() => activeTab === 'income' ? setShowAddIncomeModal(true) : setShowAddExpenditureModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg font-semibold"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg font-semibold"
           >
             <Plus className="w-5 h-5" />
             Record {activeTab === 'income' ? 'Income' : 'Expenditure'}
@@ -124,36 +124,36 @@ export function Finance() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-success-500 to-success-600 rounded-xl p-6 text-white">
+          <div className="bg-white border border-gray-200 from-success-500 to-success-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <TrendingUp className="w-8 h-8 text-white/80" />
+              <TrendingUp className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1 font-bold">GH₵ {donations.reduce((sum, d) => sum + d.amount, 0).toLocaleString()}</p>
-            <p className="text-sm text-white/80 font-medium">Total Income</p>
+            <p className="text-sm text-gray-500 font-medium">Total Income</p>
           </div>
 
-          <div className="bg-gradient-to-br from-danger-500 to-danger-600 rounded-xl p-6 text-white">
+          <div className="bg-white border border-gray-200 from-danger-500 to-danger-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <TrendingDown className="w-8 h-8 text-white/80" />
+              <TrendingDown className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1 font-bold">GH₵ {expenditures.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}</p>
-            <p className="text-sm text-white/80 font-medium">Total Expenditure</p>
+            <p className="text-sm text-gray-500 font-medium">Total Expenditure</p>
           </div>
 
-          <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl p-6 text-white">
+          <div className="bg-white border border-gray-200 from-primary-500 to-primary-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <DollarSign className="w-8 h-8 text-white/80" />
+              <DollarSign className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1 font-bold">GH₵ {(donations.reduce((sum, d) => sum + d.amount, 0) - expenditures.reduce((sum, e) => sum + e.amount, 0)).toLocaleString()}</p>
-            <p className="text-sm text-white/80 font-medium">Net Balance</p>
+            <p className="text-sm text-gray-500 font-medium">Net Balance</p>
           </div>
 
-          <div className="bg-gradient-to-br from-accent-500 to-accent-600 rounded-xl p-6 text-white">
+          <div className="bg-white border border-gray-200 from-accent-500 to-accent-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <PieChart className="w-8 h-8 text-white/80" />
+              <PieChart className="w-8 h-8 text-gray-500" />
             </div>
             <p className="text-3xl mb-1 font-bold">GH₵ {totalTithes.toLocaleString()}</p>
-            <p className="text-sm text-white/80 font-medium">Tithes</p>
+            <p className="text-sm text-gray-500 font-medium">Tithes</p>
           </div>
         </div>
       </div>
@@ -169,7 +169,7 @@ export function Finance() {
               }}
               className={`py-3.5 px-2 font-semibold text-sm transition-all relative ${
                 activeTab === 'income'
-                  ? 'text-primary-600'
+                  ? 'bg-gray-200 rounded-xl my-2 px-4 text-primary-600'
                   : 'text-neutral-500 hover:text-neutral-700'
               }`}
             >
@@ -188,7 +188,7 @@ export function Finance() {
               }}
               className={`py-3.5 px-2 font-semibold text-sm transition-all relative ${
                 activeTab === 'expenditure'
-                  ? 'text-primary-600'
+                  ? 'bg-gray-200 rounded-xl my-2 px-4 text-primary-600'
                   : 'text-neutral-500 hover:text-neutral-700'
               }`}
             >
@@ -775,7 +775,7 @@ function IncomeModal({
           <div className="flex items-center gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all font-semibold"
+              className="flex-1 bg-blue-900 from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all font-semibold"
             >
               Record Income
             </button>
@@ -939,7 +939,7 @@ function ExpenditureModal({
           <div className="flex items-center gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-danger-600 to-danger-700 text-white py-2 rounded-lg hover:from-danger-700 hover:to-danger-800 transition-all font-semibold"
+              className="flex-1 bg-blue-900 from-danger-600 to-danger-700 text-white py-2 rounded-lg hover:from-danger-700 hover:to-danger-800 transition-all font-semibold"
             >
               Record Expenditure
             </button>

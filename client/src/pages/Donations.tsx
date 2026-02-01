@@ -77,7 +77,7 @@ export function Donations() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Record Donation
@@ -478,7 +478,7 @@ function DonationModal({
           <div className="flex items-center gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all font-semibold"
+              className="flex-1 bg-blue-900 from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all font-semibold"
             >
               Record Donation
             </button>

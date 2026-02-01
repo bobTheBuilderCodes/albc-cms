@@ -105,7 +105,7 @@ export function DonationReceipt({ donation }: DonationReceiptProps) {
       </div>
 
       {/* Total Amount Highlighted */}
-      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl p-6 mb-8 text-white">
+      <div className="bg-linear-to-r from-primary-500 to-primary-600 rounded-xl p-6 mb-8 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <DollarSign className="w-8 h-8" />

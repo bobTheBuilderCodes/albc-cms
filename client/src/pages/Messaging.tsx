@@ -93,42 +93,42 @@ export function Messaging() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-2">SMS Messaging & Communication</h1>
+            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">SMS Messaging & Communication</h1>
             <p className="text-neutral-600">Manage SMS notifications and message templates</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-info-500 to-info-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-info-500 to-info-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <MessageSquare className="w-8 h-8 text-white/80" />
+              <MessageSquare className="w-8 h-8 text-gray-500" />
             </div>
-            <p className="text-3xl mb-1">{stats.total}</p>
-            <p className="text-sm text-white/80">Total Messages</p>
+            <p className="text-3xl mb-1 text-gray-700">{stats.total}</p>
+            <p className="text-sm text-gray-500">Total Messages</p>
           </div>
 
-          <div className="bg-gradient-to-br from-success-500 to-success-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-success-500 to-success-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle2 className="w-8 h-8 text-white/80" />
+              <CheckCircle2 className="w-8 h-8 text-gray-500" />
             </div>
-            <p className="text-3xl mb-1">{stats.sent}</p>
-            <p className="text-sm text-white/80">Sent</p>
+            <p className="text-3xl mb-1 text-gray-700">{stats.sent}</p>
+            <p className="text-sm text-gray-500">Sent</p>
           </div>
 
-          <div className="bg-gradient-to-br from-danger-500 to-danger-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-danger-500 to-danger-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <XCircle className="w-8 h-8 text-white/80" />
+              <XCircle className="w-8 h-8 text-gray-500" />
             </div>
-            <p className="text-3xl mb-1">{stats.failed}</p>
-            <p className="text-sm text-white/80">Failed</p>
+            <p className="text-3xl mb-1 text-gray-700">{stats.failed}</p>
+            <p className="text-sm text-gray-500">Failed</p>
           </div>
 
-          <div className="bg-gradient-to-br from-warning-500 to-warning-600 rounded-xl p-6 text-white">
+          <div className="border border-gray-200 bg-white from-warning-500 to-warning-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <Clock className="w-8 h-8 text-white/80" />
+              <Clock className="w-8 h-8 text-gray-500" />
             </div>
-            <p className="text-3xl mb-1">{stats.pending}</p>
-            <p className="text-sm text-white/80">Pending</p>
+            <p className="text-3xl mb-1 text-gray-700">{stats.pending}</p>
+            <p className="text-sm text-gray-500">Pending</p>
           </div>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function Messaging() {
               onClick={() => setActiveTab('logs')}
               className={`px-4 py-2 rounded-lg transition-colors ${
                 activeTab === 'logs'
-                  ? 'bg-primary-100 text-primary-700'
+                  ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
               }`}
             >
@@ -150,7 +150,7 @@ export function Messaging() {
               onClick={() => setActiveTab('templates')}
               className={`px-4 py-2 rounded-lg transition-colors ${
                 activeTab === 'templates'
-                  ? 'bg-primary-100 text-primary-700'
+                  ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
               }`}
             >
@@ -160,7 +160,7 @@ export function Messaging() {
               onClick={() => setActiveTab('send')}
               className={`px-4 py-2 rounded-lg transition-colors ${
                 activeTab === 'send'
-                  ? 'bg-primary-100 text-primary-700'
+                  ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
               }`}
             >
@@ -627,7 +627,7 @@ function SendMessageTab({
         <button
           onClick={handleSend}
           disabled={recipients.length === 0 || !message.trim()}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send className="w-5 h-5" />
           Send to {recipients.length} Recipients
@@ -729,7 +729,7 @@ function TemplateModal({
           <div className="flex items-center gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all"
+              className="flex-1 bg-blue-900 from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all"
             >
               {template ? 'Update Template' : 'Add Template'}
             </button>

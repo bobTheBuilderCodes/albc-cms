@@ -81,12 +81,12 @@ export function Programs() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-2">Church Programs & Events</h1>
+            <h1 className="text-neutral-900 mb-0 text-2xl font-bold ">Church Programs & Events</h1>
             <p className="text-neutral-600">Manage church programs and events</p>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Add Program
@@ -94,7 +94,7 @@ export function Programs() {
         </div>
 
         <div className="flex items-center gap-4 mb-6">
-          <div className="flex-1 relative">
+          <div className="bg-white flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
               type="text"
@@ -110,7 +110,7 @@ export function Programs() {
               onClick={() => setViewMode('list')}
               className={`px-4 py-2 rounded-md transition-colors ${
                 viewMode === 'list'
-                  ? 'bg-primary-100 text-primary-700'
+                  ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
               }`}
             >
@@ -120,7 +120,7 @@ export function Programs() {
               onClick={() => setViewMode('calendar')}
               className={`px-4 py-2 rounded-md transition-colors ${
                 viewMode === 'calendar'
-                  ? 'bg-primary-100 text-primary-700'
+                  ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
               }`}
             >
@@ -549,7 +549,7 @@ function ProgramModal({ program, onClose, onSave }: { program: ChurchProgram | n
           <div className="flex items-center gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all"
+              className="flex-1 bg-blue-900 from-primary-600 to-accent-600 text-white py-2 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all"
             >
               {program ? 'Update Program' : 'Add Program'}
             </button>
