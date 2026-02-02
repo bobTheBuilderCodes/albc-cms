@@ -10,7 +10,8 @@ import {
   Settings,
   Church,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCog
 } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/messaging', icon: MessageSquare, label: 'Messaging' },
   { to: '/finance', icon: DollarSign, label: 'Finance' },
   { to: '/audit', icon: FileText, label: 'Audit Logs' },
+  { to: '/user-management', icon: UserCog, label: 'User Management', module: 'users' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

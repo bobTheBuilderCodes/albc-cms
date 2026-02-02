@@ -1,10 +1,26 @@
 export type UserRole = 'pastor' | 'admin';
 
+export type ModulePermission = 
+  | 'dashboard'
+  | 'members'
+  | 'programs'
+  | 'attendance'
+  | 'messaging'
+  | 'finance'
+  | 'audit'
+  | 'settings'
+  | 'users';
+
 export interface User {
   id: string;
   email: string;
+  password?: string;
   name: string;
   role: UserRole;
+  modules: ModulePermission[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthState {

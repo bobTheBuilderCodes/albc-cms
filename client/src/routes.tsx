@@ -10,6 +10,7 @@ import { AuditLogs } from "./pages/AuditLogs";
 import { Settings } from "./pages/Settings";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import { UserManagement } from "./pages/UserManagement";
 
 export const router = createBrowserRouter([
   {
@@ -51,6 +52,10 @@ export const router = createBrowserRouter([
       {
         path: "audit",
         element: <AuditLogs />,
+      },
+      {
+        path: "user-management",
+        element: <UserManagement />,
       },
       {
         path: "settings",

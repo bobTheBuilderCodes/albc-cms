@@ -173,7 +173,7 @@ export function MemberProfile() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* Banner Profile Header */}
-      <div className="bg-gradient-to-br from-primary-500 via-primary-600 to-accent-500 relative">
+      <div className=" bg-blue-900 from-primary-500 via-primary-600 to-accent-500 relative">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40"></div>
         
         <div className="max-w-7xl mx-auto px-6 py-6 relative">
@@ -290,22 +290,22 @@ export function MemberProfile() {
             <div className="flex gap-6">
               <button
                 onClick={() => setActiveTab('attendance')}
-                className={`py-3.5 px-2 font-semibold text-sm transition-all relative ${
+                className={`py-3 px-6 my-3 font-semibold text-sm transition-all relative ${
                   activeTab === 'attendance'
-                    ? 'text-primary-600'
+                    ? 'text-primary-600 bg-gray-200 rounded-lg'
                     : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
                 Attendance History
                 {activeTab === 'attendance' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 "></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('donations')}
-                className={`py-3.5 px-2 font-semibold text-sm transition-all relative ${
+                className={`py-3 px-6 my-3 font-semibold text-sm transition-all relative ${
                   activeTab === 'donations'
-                    ? 'text-primary-600'
+                    ? 'text-primary-600 text-primary-600 bg-gray-200 rounded-lg'
                     : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
@@ -316,9 +316,9 @@ export function MemberProfile() {
               </button>
               <button
                 onClick={() => setActiveTab('prayers')}
-                className={`py-3.5 px-2 font-semibold text-sm transition-all relative ${
+                className={`py-3 px-6 my-3 font-semibold text-sm transition-all relative ${
                   activeTab === 'prayers'
-                    ? 'text-primary-600'
+                    ? 'text-primary-600 text-primary-600 bg-gray-200 rounded-lg'
                     : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
