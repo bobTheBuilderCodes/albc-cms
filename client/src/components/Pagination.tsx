@@ -75,7 +75,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage
               key={index}
               onClick={() => typeof page === 'number' ? onPageChange(page) : null}
               disabled={page === '...'}
-              className={`min-w-[40px] h-10 flex items-center justify-center rounded-lg transition-colors ${
+              className={`min-w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
                 page === currentPage
                   ? 'bg-primary-600 text-white font-semibold'
                   : page === '...'
