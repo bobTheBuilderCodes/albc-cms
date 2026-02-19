@@ -476,6 +476,9 @@ type ApiSettings = {
   smsSenderId?: string;
   departments?: string[];
   enableBirthdayNotifications?: boolean;
+  birthdayMessageTemplate?: string;
+  birthdaySendDaysBefore?: number;
+  birthdaySendTime?: string;
   enableProgramReminders?: boolean;
   enableMemberAddedNotifications?: boolean;
   enableDonationNotifications?: boolean;
@@ -496,6 +499,9 @@ export type SettingsPayload = {
   smsSenderId?: string;
   departments?: string[];
   enableBirthdayNotifications?: boolean;
+  birthdayMessageTemplate?: string;
+  birthdaySendDaysBefore?: number;
+  birthdaySendTime?: string;
   enableProgramReminders?: boolean;
   enableMemberAddedNotifications?: boolean;
   enableDonationNotifications?: boolean;
@@ -519,6 +525,9 @@ export async function fetchSettings(): Promise<SettingsPayload | null> {
     smsSenderId: settings.smsSenderId,
     departments: settings.departments || [],
     enableBirthdayNotifications: settings.enableBirthdayNotifications,
+    birthdayMessageTemplate: settings.birthdayMessageTemplate,
+    birthdaySendDaysBefore: settings.birthdaySendDaysBefore,
+    birthdaySendTime: settings.birthdaySendTime,
     enableProgramReminders: settings.enableProgramReminders,
     enableMemberAddedNotifications: settings.enableMemberAddedNotifications,
     enableDonationNotifications: settings.enableDonationNotifications,
@@ -538,6 +547,9 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     smsSenderId: payload.smsSenderId,
     departments: payload.departments,
     enableBirthdayNotifications: payload.enableBirthdayNotifications,
+    birthdayMessageTemplate: payload.birthdayMessageTemplate,
+    birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
+    birthdaySendTime: payload.birthdaySendTime,
     enableProgramReminders: payload.enableProgramReminders,
     enableMemberAddedNotifications: payload.enableMemberAddedNotifications,
     enableDonationNotifications: payload.enableDonationNotifications,
@@ -558,6 +570,9 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       smsSenderId: res.data.data.smsSenderId,
       departments: res.data.data.departments || [],
       enableBirthdayNotifications: res.data.data.enableBirthdayNotifications,
+      birthdayMessageTemplate: res.data.data.birthdayMessageTemplate,
+      birthdaySendDaysBefore: res.data.data.birthdaySendDaysBefore,
+      birthdaySendTime: res.data.data.birthdaySendTime,
       enableProgramReminders: res.data.data.enableProgramReminders,
       enableMemberAddedNotifications: res.data.data.enableMemberAddedNotifications,
       enableDonationNotifications: res.data.data.enableDonationNotifications,
@@ -578,6 +593,9 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     smsSenderId: res.data.data.smsSenderId,
     departments: res.data.data.departments || [],
     enableBirthdayNotifications: res.data.data.enableBirthdayNotifications,
+    birthdayMessageTemplate: res.data.data.birthdayMessageTemplate,
+    birthdaySendDaysBefore: res.data.data.birthdaySendDaysBefore,
+    birthdaySendTime: res.data.data.birthdaySendTime,
     enableProgramReminders: res.data.data.enableProgramReminders,
     enableMemberAddedNotifications: res.data.data.enableMemberAddedNotifications,
     enableDonationNotifications: res.data.data.enableDonationNotifications,

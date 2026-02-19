@@ -38,6 +38,20 @@ const isSameMonthDay = (date: Date, target: Date): boolean => {
   return date.getUTCMonth() === target.getUTCMonth() && date.getUTCDate() === target.getUTCDate();
 };
 
+const parseTime = (value?: string): { hour: number; minute: number } => {
+  const match = String(value || "").match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return { hour: 8, minute: 0 };
+  return { hour: Number(match[1]), minute: Number(match[2]) };
+};
+
+const applyBirthdayTemplate = (template: string, name: string, churchName: string): string => {
+  return template
+    .split("{{name}}")
+    .join(name)
+    .split("{{church_name}}")
+    .join(churchName);
+};
+
 const getUserEmails = async (): Promise<string[]> => {
   const users = await User.find({ isActive: true }).select("email");
   return users.map((user) => String(user.email || "").trim()).filter(Boolean);
@@ -58,11 +72,17 @@ const safeSend = async (task: () => Promise<void>, label: string): Promise<void>
 
 const getNotificationConfig = async () => {
   const settings = await Settings.findOne().select(
-    "enableBirthdayNotifications enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications"
+    "churchName enableBirthdayNotifications birthdayMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications"
   );
 
   return {
+    churchName: settings?.churchName || "Church",
     birthday: settings?.enableBirthdayNotifications ?? true,
+    birthdayMessageTemplate:
+      settings?.birthdayMessageTemplate ||
+      "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
+    birthdaySendDaysBefore: Number(settings?.birthdaySendDaysBefore ?? 0),
+    birthdaySendTime: settings?.birthdaySendTime || "08:00",
     program: settings?.enableProgramReminders ?? true,
     memberAdded: settings?.enableMemberAddedNotifications ?? true,
     donation: settings?.enableDonationNotifications ?? true,
@@ -159,6 +179,14 @@ export const notificationService = {
     if (!config.birthday) return;
 
     const now = new Date();
+    const { hour, minute } = parseTime(config.birthdaySendTime);
+    if (now.getUTCHours() !== hour || now.getUTCMinutes() !== minute) return;
+
+    const targetDate = new Date(now);
+    const daysBefore = Number.isFinite(config.birthdaySendDaysBefore)
+      ? Math.max(0, Math.trunc(config.birthdaySendDaysBefore))
+      : 0;
+    targetDate.setUTCDate(targetDate.getUTCDate() + daysBefore);
     const dateKey = todayDateKey();
     const membersWithBirthdays = await Member.find({
       dateOfBirth: { $exists: true, $ne: null },
@@ -167,7 +195,7 @@ export const notificationService = {
 
     const birthdayMembers = membersWithBirthdays.filter((member) => {
       if (!member.dateOfBirth) return false;
-      return isSameMonthDay(new Date(member.dateOfBirth), now);
+      return isSameMonthDay(new Date(member.dateOfBirth), targetDate);
     });
 
     if (birthdayMembers.length === 0) return;
@@ -183,6 +211,11 @@ export const notificationService = {
       if (existingLog) continue;
 
       const fullName = memberDisplayName(member);
+      const celebrantMessage = applyBirthdayTemplate(
+        config.birthdayMessageTemplate,
+        fullName,
+        config.churchName
+      );
       const others = allMemberEmails.filter(
         (email) => email.toLowerCase() !== String(member.email).toLowerCase()
       );
@@ -204,7 +237,7 @@ export const notificationService = {
           emailService.send({
             to: String(member.email),
             subject: `Happy Birthday, ${fullName}!`,
-            text: `Happy Birthday ${fullName}! May God bless your new year with joy, peace, favor, and good health.`,
+            text: celebrantMessage,
           }),
         "birthday celebrant"
       );

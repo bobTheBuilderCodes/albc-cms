@@ -70,27 +70,52 @@ export function Messaging() {
     setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
 
     // Simulate auto birthday check from live member data
-    checkAndSendBirthdayMessages(memberData);
+    checkAndSendBirthdayMessages(memberData, settings || undefined);
   };
 
-  const checkAndSendBirthdayMessages = (membersData: Member[]) => {
+  const checkAndSendBirthdayMessages = (
+    membersData: Member[],
+    settings?: {
+      churchName?: string;
+      enableBirthdayNotifications?: boolean;
+      birthdayMessageTemplate?: string;
+      birthdaySendDaysBefore?: number;
+      birthdaySendTime?: string;
+    }
+  ) => {
+    if (settings?.enableBirthdayNotifications === false) return;
+
     const today = new Date();
-    const todayStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const [hours = "08", minutes = "00"] = String(settings?.birthdaySendTime || "08:00").split(":");
+    const sendHour = Number(hours);
+    const sendMinute = Number(minutes);
+    if (today.getHours() < sendHour || (today.getHours() === sendHour && today.getMinutes() < sendMinute)) {
+      return;
+    }
+    const daysBefore = Math.max(0, Number(settings?.birthdaySendDaysBefore || 0));
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + daysBefore);
+    const targetMonthDay = `${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+    const churchName = settings?.churchName || "Grace Church";
+    const template =
+      settings?.birthdayMessageTemplate ||
+      "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}";
 
     const birthdayMembers = membersData.filter((m: Member) => {
       const dob = new Date(m.dateOfBirth);
       const memberBirthday = `${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
-      return memberBirthday === todayStr;
+      return memberBirthday === targetMonthDay;
     });
 
     if (birthdayMembers.length > 0) {
       const existingLogs = JSON.parse(localStorage.getItem('cms_sms_logs') || '[]');
+      const dateKey = today.toISOString().slice(0, 10);
       const newLogs: SMSLog[] = birthdayMembers.map((m: Member) => ({
-        id: `sms-birthday-${Date.now()}-${m.id}`,
+        id: `sms-birthday-${dateKey}-${m.id}`,
         recipientId: m.id,
         recipientName: m.fullName,
         recipientPhone: m.phoneNumber,
-        message: `Happy Birthday ${m.fullName}! May God's blessings overflow in your life today and always. - Grace Church`,
+        message: template.replaceAll("{{name}}", m.fullName).replaceAll("{{church_name}}", churchName),
         type: 'birthday' as const,
         status: Math.random() > 0.1 ? 'sent' : 'failed' as const,
         sentAt: new Date().toISOString(),
@@ -99,7 +124,11 @@ export function Messaging() {
         createdAt: new Date().toISOString(),
       }));
 
-      const updated = [...existingLogs, ...newLogs];
+      const existingKeys = new Set(existingLogs.map((log: SMSLog) => `${log.type}-${log.recipientId}-${new Date(log.createdAt).toISOString().slice(0, 10)}`));
+      const dedupedNewLogs = newLogs.filter((log) => !existingKeys.has(`${log.type}-${log.recipientId}-${dateKey}`));
+      if (dedupedNewLogs.length === 0) return;
+
+      const updated = [...existingLogs, ...dedupedNewLogs];
       localStorage.setItem('cms_sms_logs', JSON.stringify(updated));
       setSmsLogs(updated);
     }

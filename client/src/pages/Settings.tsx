@@ -37,6 +37,9 @@ export function Settings() {
       smsApiKey: '',
       smsSenderId: '',
       enableBirthdayNotifications: true,
+      birthdayMessageTemplate: "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
+      birthdaySendDaysBefore: 0,
+      birthdaySendTime: "08:00",
       enableProgramReminders: true,
       enableMemberAddedNotifications: true,
       enableDonationNotifications: true,
@@ -76,6 +79,12 @@ export function Settings() {
           smsSenderId: backendSettings.smsSenderId ?? prev.smsSenderId,
           enableBirthdayNotifications:
             backendSettings.enableBirthdayNotifications ?? prev.enableBirthdayNotifications,
+          birthdayMessageTemplate:
+            backendSettings.birthdayMessageTemplate ?? prev.birthdayMessageTemplate,
+          birthdaySendDaysBefore:
+            backendSettings.birthdaySendDaysBefore ?? prev.birthdaySendDaysBefore,
+          birthdaySendTime:
+            backendSettings.birthdaySendTime ?? prev.birthdaySendTime,
           enableProgramReminders:
             backendSettings.enableProgramReminders ?? prev.enableProgramReminders,
           enableMemberAddedNotifications:
@@ -112,6 +121,9 @@ export function Settings() {
       smsSenderId: settings.smsSenderId,
       departments,
       enableBirthdayNotifications: settings.enableBirthdayNotifications,
+      birthdayMessageTemplate: settings.birthdayMessageTemplate,
+      birthdaySendDaysBefore: settings.birthdaySendDaysBefore,
+      birthdaySendTime: settings.birthdaySendTime,
       enableProgramReminders: settings.enableProgramReminders,
       enableMemberAddedNotifications: settings.enableMemberAddedNotifications,
       enableDonationNotifications: settings.enableDonationNotifications,
@@ -331,6 +343,48 @@ export function Settings() {
                 <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
               </label>
             </div>
+
+            {settings.enableBirthdayNotifications && (
+              <div className="space-y-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                <div>
+                  <label className="block text-sm text-neutral-700 mb-2">Birthday Message Template</label>
+                  <textarea
+                    value={settings.birthdayMessageTemplate || ""}
+                    onChange={(e) => setSettings({ ...settings, birthdayMessageTemplate: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Use {{name}} for member name and {{church_name}} for church name"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">Available variables: <code>{"{{name}}"}</code>, <code>{"{{church_name}}"}</code></p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-neutral-700 mb-2">Send Message (days before birthday)</label>
+                    <select
+                      value={Number(settings.birthdaySendDaysBefore ?? 0)}
+                      onChange={(e) => setSettings({ ...settings, birthdaySendDaysBefore: parseInt(e.target.value, 10) })}
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value={0}>On birthday</option>
+                      <option value={1}>1 day before</option>
+                      <option value={2}>2 days before</option>
+                      <option value={3}>3 days before</option>
+                      <option value={7}>1 week before</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-neutral-700 mb-2">Send Time</label>
+                    <input
+                      type="time"
+                      value={settings.birthdaySendTime || "08:00"}
+                      onChange={(e) => setSettings({ ...settings, birthdaySendTime: e.target.value })}
+                      className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
               <div>
@@ -585,7 +639,7 @@ export function Settings() {
      
 
         {/* Save Button */}
-        <div className="flex items-center gap-4">
+        <div className="sticky bottom-0 z-30 -mx-6 px-6 py-4 bg-white/95 backdrop-blur border-t border-neutral-200 flex items-center gap-4">
             <button
             onClick={() => handleSave().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to save settings'))}
             disabled={loadingSettings}

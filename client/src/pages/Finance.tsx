@@ -23,6 +23,7 @@ import {
 import { Pagination } from '../components/Pagination';
 
 type TabType = 'income' | 'expenditure';
+const incomeTypeLabel = (type: string) => (type === 'offering' ? 'dues' : type);
 
 export function Finance() {
   const [activeTab, setActiveTab] = useState<TabType>('income');
@@ -63,7 +64,7 @@ export function Finance() {
   const totalIncome = filteredDonations.reduce((sum, d) => sum + d.amount, 0);
   const totalExpenditure = filteredExpenditures.reduce((sum, e) => sum + e.amount, 0);
   const totalTithes = donations.filter(d => d.type === 'tithe').reduce((sum, d) => sum + d.amount, 0);
-  const totalOfferings = donations.filter(d => d.type === 'offering').reduce((sum, d) => sum + d.amount, 0);
+  const totalDues = donations.filter(d => d.type === 'offering').reduce((sum, d) => sum + d.amount, 0);
   const totalSeeds = donations.filter(d => d.type === 'seed').reduce((sum, d) => sum + d.amount, 0);
 
   const exportData = () => {
@@ -72,7 +73,7 @@ export function Finance() {
       const rows = filteredDonations.map(d => [
         new Date(d.date).toLocaleDateString(),
         d.memberName,
-        d.type,
+        incomeTypeLabel(d.type),
         d.amount,
         d.paymentMethod,
         d.receiptNumber || '',
@@ -385,7 +386,7 @@ function IncomeTab({
         >
           <option value="all">All Types</option>
           <option value="tithe">Tithe</option>
-          <option value="offering">Offering</option>
+          <option value="offering">Dues</option>
           <option value="seed">Seed</option>
           <option value="special">Special</option>
           <option value="other">Other</option>
@@ -425,7 +426,7 @@ function IncomeTab({
                 </td>
                 <td className="px-6 py-4">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-gray-50 text-primary-700 capitalize font-semibold">
-                    {donation.type}
+                    {incomeTypeLabel(donation.type)}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-success-600 font-bold">
@@ -626,12 +627,7 @@ function IncomeModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Auto-generate receipt number if not provided and receipt generation is enabled
-    let donationData = { ...formData };
-    if (generateReceipt && !donationData.receiptNumber) {
-      donationData.receiptNumber = `RCP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`;
-    }
+    const donationData = { ...formData };
     
     onSave(donationData);
     
@@ -701,7 +697,7 @@ function IncomeModal({
                 required
               >
                 <option value="tithe">Tithe</option>
-                <option value="offering">Offering</option>
+                <option value="offering">Dues</option>
                 <option value="seed">Seed</option>
                 <option value="special">Special</option>
                 <option value="other">Other</option>
@@ -748,17 +744,6 @@ function IncomeModal({
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm text-neutral-700 mb-2 font-semibold">Receipt Number</label>
-              <input
-                type="text"
-                value={formData.receiptNumber || ''}
-                onChange={(e) => setFormData({ ...formData, receiptNumber: e.target.value })}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
-                placeholder="e.g., RCP-2026-001"
-              />
-            </div>
-
-            <div className="col-span-2">
               <label className="block text-sm text-neutral-700 mb-2 font-semibold">Description / Notes</label>
               <textarea
                 value={formData.description}
@@ -784,8 +769,7 @@ function IncomeModal({
                     Generate and Download Receipt
                   </label>
                   <p className="text-xs text-neutral-600 mt-1 font-medium">
-                    Automatically generate an official receipt that can be printed or saved. 
-                    {!formData.receiptNumber && generateReceipt && ' A receipt number will be auto-generated.'}
+                    Automatically generate an official receipt that can be printed or saved.
                   </p>
                 </div>
               </div>

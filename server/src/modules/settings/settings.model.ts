@@ -11,6 +11,9 @@ export interface ISettings extends Document {
   smsSenderId?: string;
   departments: string[];
   enableBirthdayNotifications: boolean;
+  birthdayMessageTemplate: string;
+  birthdaySendDaysBefore: number;
+  birthdaySendTime: string;
   enableProgramReminders: boolean;
   enableMemberAddedNotifications: boolean;
   enableDonationNotifications: boolean;
@@ -29,6 +32,13 @@ const settingsSchema = new Schema<ISettings>(
     smsSenderId: { type: String, trim: true },
     departments: { type: [String], default: [] },
     enableBirthdayNotifications: { type: Boolean, default: true },
+    birthdayMessageTemplate: {
+      type: String,
+      trim: true,
+      default: "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
+    },
+    birthdaySendDaysBefore: { type: Number, default: 0, min: 0, max: 30 },
+    birthdaySendTime: { type: String, trim: true, default: "08:00" },
     enableProgramReminders: { type: Boolean, default: true },
     enableMemberAddedNotifications: { type: Boolean, default: true },
     enableDonationNotifications: { type: Boolean, default: true },

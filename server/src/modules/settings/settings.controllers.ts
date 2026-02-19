@@ -10,7 +10,7 @@ export const createSettings = asyncHandler(async (req: Request, res: Response) =
     throw new HttpError(409, "Settings already exist. Use update instead.");
   }
 
-  const settings = await Settings.create({
+const settings = await Settings.create({
     churchName: ensureString(req.body.churchName, "churchName"),
     address: req.body.address,
     phone: req.body.phone,
@@ -24,6 +24,16 @@ export const createSettings = asyncHandler(async (req: Request, res: Response) =
       req.body.enableBirthdayNotifications === undefined
         ? true
         : Boolean(req.body.enableBirthdayNotifications),
+    birthdayMessageTemplate:
+      typeof req.body.birthdayMessageTemplate === "string" && req.body.birthdayMessageTemplate.trim().length > 0
+        ? req.body.birthdayMessageTemplate.trim()
+        : "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
+    birthdaySendDaysBefore:
+      req.body.birthdaySendDaysBefore === undefined ? 0 : Number(req.body.birthdaySendDaysBefore),
+    birthdaySendTime:
+      typeof req.body.birthdaySendTime === "string" && req.body.birthdaySendTime.trim().length > 0
+        ? req.body.birthdaySendTime.trim()
+        : "08:00",
     enableProgramReminders:
       req.body.enableProgramReminders === undefined
         ? true
@@ -65,6 +75,15 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   }
   if (isDefined(req.body.enableBirthdayNotifications)) {
     updates.enableBirthdayNotifications = Boolean(req.body.enableBirthdayNotifications);
+  }
+  if (isDefined(req.body.birthdayMessageTemplate)) {
+    updates.birthdayMessageTemplate = String(req.body.birthdayMessageTemplate || "").trim();
+  }
+  if (isDefined(req.body.birthdaySendDaysBefore)) {
+    updates.birthdaySendDaysBefore = Number(req.body.birthdaySendDaysBefore);
+  }
+  if (isDefined(req.body.birthdaySendTime)) {
+    updates.birthdaySendTime = String(req.body.birthdaySendTime || "").trim();
   }
   if (isDefined(req.body.enableProgramReminders)) {
     updates.enableProgramReminders = Boolean(req.body.enableProgramReminders);
