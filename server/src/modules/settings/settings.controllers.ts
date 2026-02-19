@@ -3,6 +3,16 @@ import Settings from "./settings.model";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { HttpError } from "../../utils/httpError";
 import { ensureString, isDefined } from "../../utils/validators";
+import { emailService } from "../../services/email.service";
+
+const defaultProgramNotificationTemplate =
+  "A new church program has been added.\nProgram: {{program_title}}\nDate: {{program_date}}\nLocation: {{program_location}}\nDetails: {{program_description}}\n- {{church_name}}";
+const defaultMemberAddedNotificationTemplate =
+  "Hello {{member_name}}, welcome to our church family. Your membership profile has been created successfully. - {{church_name}}";
+const defaultDonationNotificationTemplate =
+  "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}";
+const defaultUserAddedNotificationTemplate =
+  "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}";
 
 export const createSettings = asyncHandler(async (req: Request, res: Response) => {
   const existingSettings = await Settings.findOne();
@@ -50,6 +60,26 @@ const settings = await Settings.create({
       req.body.enableUserAddedNotifications === undefined
         ? true
         : Boolean(req.body.enableUserAddedNotifications),
+    programNotificationTemplate:
+      typeof req.body.programNotificationTemplate === "string" &&
+      req.body.programNotificationTemplate.trim().length > 0
+        ? req.body.programNotificationTemplate.trim()
+        : defaultProgramNotificationTemplate,
+    memberAddedNotificationTemplate:
+      typeof req.body.memberAddedNotificationTemplate === "string" &&
+      req.body.memberAddedNotificationTemplate.trim().length > 0
+        ? req.body.memberAddedNotificationTemplate.trim()
+        : defaultMemberAddedNotificationTemplate,
+    donationNotificationTemplate:
+      typeof req.body.donationNotificationTemplate === "string" &&
+      req.body.donationNotificationTemplate.trim().length > 0
+        ? req.body.donationNotificationTemplate.trim()
+        : defaultDonationNotificationTemplate,
+    userAddedNotificationTemplate:
+      typeof req.body.userAddedNotificationTemplate === "string" &&
+      req.body.userAddedNotificationTemplate.trim().length > 0
+        ? req.body.userAddedNotificationTemplate.trim()
+        : defaultUserAddedNotificationTemplate,
   });
 
   res.status(201).json({ success: true, data: settings });
@@ -97,6 +127,18 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   if (isDefined(req.body.enableUserAddedNotifications)) {
     updates.enableUserAddedNotifications = Boolean(req.body.enableUserAddedNotifications);
   }
+  if (isDefined(req.body.programNotificationTemplate)) {
+    updates.programNotificationTemplate = String(req.body.programNotificationTemplate || "").trim();
+  }
+  if (isDefined(req.body.memberAddedNotificationTemplate)) {
+    updates.memberAddedNotificationTemplate = String(req.body.memberAddedNotificationTemplate || "").trim();
+  }
+  if (isDefined(req.body.donationNotificationTemplate)) {
+    updates.donationNotificationTemplate = String(req.body.donationNotificationTemplate || "").trim();
+  }
+  if (isDefined(req.body.userAddedNotificationTemplate)) {
+    updates.userAddedNotificationTemplate = String(req.body.userAddedNotificationTemplate || "").trim();
+  }
 
   const settings = await Settings.findByIdAndUpdate(req.params.id, updates, {
     new: true,
@@ -108,4 +150,28 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   }
 
   res.json({ success: true, data: settings });
+});
+
+export const sendTestEmail = asyncHandler(async (req: Request, res: Response) => {
+  const to = ensureString(req.body.to, "to");
+
+  if (!to.includes("@")) {
+    throw new HttpError(400, "Provide a valid recipient email address.");
+  }
+
+  const emailStatus = emailService.getStatus();
+  if (!emailStatus.enabled) {
+    throw new HttpError(
+      503,
+      `Email service is disabled. ${emailStatus.reason || "Check SMTP configuration and server logs."}`
+    );
+  }
+
+  await emailService.send({
+    to,
+    subject: "ChurchCMS SMTP Test",
+    text: "SMTP is configured and sending successfully from ChurchCMS.",
+  });
+
+  res.json({ success: true, message: `Test email sent to ${to}` });
 });

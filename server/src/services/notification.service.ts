@@ -9,6 +9,7 @@ type FinanceNotificationInput = {
   amount: number;
   note?: string;
   createdByName?: string;
+  memberId?: string;
 };
 
 type ProgramNotificationInput = {
@@ -52,6 +53,12 @@ const applyBirthdayTemplate = (template: string, name: string, churchName: strin
     .join(churchName);
 };
 
+const applyTemplate = (template: string, replacements: Record<string, string>): string => {
+  return Object.entries(replacements).reduce((output, [key, value]) => {
+    return output.split(`{{${key}}}`).join(value);
+  }, template);
+};
+
 const getUserEmails = async (): Promise<string[]> => {
   const users = await User.find({ isActive: true }).select("email");
   return users.map((user) => String(user.email || "").trim()).filter(Boolean);
@@ -72,7 +79,7 @@ const safeSend = async (task: () => Promise<void>, label: string): Promise<void>
 
 const getNotificationConfig = async () => {
   const settings = await Settings.findOne().select(
-    "churchName enableBirthdayNotifications birthdayMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications"
+    "churchName enableBirthdayNotifications birthdayMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
   );
 
   return {
@@ -87,23 +94,42 @@ const getNotificationConfig = async () => {
     memberAdded: settings?.enableMemberAddedNotifications ?? true,
     donation: settings?.enableDonationNotifications ?? true,
     userAdded: settings?.enableUserAddedNotifications ?? true,
+    programNotificationTemplate:
+      settings?.programNotificationTemplate ||
+      "A new church program has been added.\nProgram: {{program_title}}\nDate: {{program_date}}\nLocation: {{program_location}}\nDetails: {{program_description}}\n- {{church_name}}",
+    memberAddedNotificationTemplate:
+      settings?.memberAddedNotificationTemplate ||
+      "Hello {{member_name}}, welcome to our church family. Your membership profile has been created successfully. - {{church_name}}",
+    donationNotificationTemplate:
+      settings?.donationNotificationTemplate ||
+      "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
+    userAddedNotificationTemplate:
+      settings?.userAddedNotificationTemplate ||
+      "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}",
   };
 };
 
 export const notificationService = {
   async sendMemberWelcome(member: IMember): Promise<void> {
-    if (!member.email) return;
+    const recipient = String(member.email || "").trim();
+    if (!recipient) return;
     const config = await getNotificationConfig();
-    if (!config.memberAdded) return;
-    const recipient = String(member.email);
+    if (!config.memberAdded) {
+      console.log("Member welcome notification skipped: feature is disabled in settings.");
+      return;
+    }
 
     const name = memberDisplayName(member);
+    const message = applyTemplate(config.memberAddedNotificationTemplate, {
+      member_name: name,
+      church_name: config.churchName,
+    });
     await safeSend(
       () =>
         emailService.send({
           to: recipient,
           subject: "Welcome to ChurchCMS",
-          text: `Hello ${name}, welcome to our church family. Your membership profile has been created successfully.`,
+          text: message,
         }),
       "member welcome"
     );
@@ -112,20 +138,42 @@ export const notificationService = {
   async sendFinanceEntryNotification(payload: FinanceNotificationInput): Promise<void> {
     const config = await getNotificationConfig();
     if (!config.donation) return;
+    const isIncome = payload.type !== "Expense";
+    let recipients: string[] = [];
+    let memberName = "";
 
-    const recipients = await getUserEmails();
+    if (isIncome && payload.memberId) {
+      const member = await Member.findById(payload.memberId).select("firstName lastName email");
+      const recipient = String(member?.email || "").trim();
+      if (recipient) {
+        recipients = [recipient];
+        memberName = member
+          ? `${String(member.firstName || "").trim()} ${String(member.lastName || "").trim()}`.trim()
+          : "";
+      }
+    }
+
+    if (recipients.length === 0) {
+      recipients = await getUserEmails();
+    }
     if (recipients.length === 0) return;
 
     const amount = Number(payload.amount).toLocaleString();
     const entryType = payload.type === "Expense" ? "Expenditure" : "Income";
-    const note = payload.note ? `\nNote: ${payload.note}` : "";
+    const message = applyTemplate(config.donationNotificationTemplate, {
+      entry_type: payload.type,
+      amount,
+      note: payload.note || "-",
+      member_name: memberName || "Member",
+      church_name: config.churchName,
+    });
 
     await safeSend(
       () =>
         emailService.send({
           to: recipients,
           subject: `New Finance Entry: ${entryType}`,
-          text: `A new finance entry has been recorded.\nType: ${payload.type}\nAmount: ${amount}${note}`,
+          text: message,
         }),
       "finance entry"
     );
@@ -138,21 +186,20 @@ export const notificationService = {
     const recipients = await getMemberEmails();
     if (recipients.length === 0) return;
 
-    const details = [
-      `Program: ${payload.title}`,
-      `Date: ${formatDate(new Date(payload.date))}`,
-      payload.location ? `Location: ${payload.location}` : "",
-      payload.description ? `Details: ${payload.description}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const message = applyTemplate(config.programNotificationTemplate, {
+      program_title: payload.title,
+      program_date: formatDate(new Date(payload.date)),
+      program_location: payload.location || "-",
+      program_description: payload.description || "-",
+      church_name: config.churchName,
+    });
 
     await safeSend(
       () =>
         emailService.send({
           to: recipients,
           subject: `New Church Program: ${payload.title}`,
-          text: `A new church program has been added.\n\n${details}`,
+          text: message,
         }),
       "program created"
     );
@@ -162,13 +209,20 @@ export const notificationService = {
     if (!user.email) return;
     const config = await getNotificationConfig();
     if (!config.userAdded) return;
+    const message = applyTemplate(config.userAddedNotificationTemplate, {
+      user_name: user.name,
+      user_email: user.email,
+      password: plainPassword,
+      role: user.role,
+      church_name: config.churchName,
+    });
 
     await safeSend(
       () =>
         emailService.send({
           to: user.email,
           subject: "Your ChurchCMS Account Credentials",
-          text: `Hello ${user.name},\nYour account has been created.\nEmail: ${user.email}\nPassword: ${plainPassword}\nRole: ${user.role}\nPlease log in and change your password immediately.`,
+          text: message,
         }),
       "user created credentials"
     );

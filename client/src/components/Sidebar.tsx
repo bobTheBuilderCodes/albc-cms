@@ -12,7 +12,8 @@ import {
   Church,
   ChevronLeft,
   ChevronRight,
-  UserCog
+  UserCog,
+  BellRing
 } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +29,7 @@ const navItems = [
   { to: '/finance', icon: DollarSign, label: 'Finance', module: 'finance' },
   { to: '/audit', icon: FileText, label: 'Audit Logs', module: 'audit' },
   { to: '/user-management', icon: UserCog, label: 'User Management', module: 'users' },
+  { to: '/notifications-configration', icon: BellRing, label: 'Notifications Configration', module: 'settings' },
   { to: '/settings', icon: Settings, label: 'Settings', module: 'settings' },
 ];
 

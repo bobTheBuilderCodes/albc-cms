@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import { UserManagement } from "./pages/UserManagement";
 import { ModuleGuard } from "./components/ModuleGuard";
 import { ProfileSettings } from "./pages/ProfileSettings";
+import { NotificationsConfigration } from "./pages/NotificationsConfigration";
 
 export const router = createBrowserRouter([
   {
@@ -100,6 +101,14 @@ export const router = createBrowserRouter([
         element: (
           <ModuleGuard module="settings">
             <Settings />
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "notifications-configration",
+        element: (
+          <ModuleGuard module="settings">
+            <NotificationsConfigration />
           </ModuleGuard>
         ),
       },

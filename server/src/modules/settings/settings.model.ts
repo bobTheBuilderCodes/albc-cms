@@ -18,6 +18,10 @@ export interface ISettings extends Document {
   enableMemberAddedNotifications: boolean;
   enableDonationNotifications: boolean;
   enableUserAddedNotifications: boolean;
+  programNotificationTemplate: string;
+  memberAddedNotificationTemplate: string;
+  donationNotificationTemplate: string;
+  userAddedNotificationTemplate: string;
 }
 
 const settingsSchema = new Schema<ISettings>(
@@ -43,6 +47,30 @@ const settingsSchema = new Schema<ISettings>(
     enableMemberAddedNotifications: { type: Boolean, default: true },
     enableDonationNotifications: { type: Boolean, default: true },
     enableUserAddedNotifications: { type: Boolean, default: true },
+    programNotificationTemplate: {
+      type: String,
+      trim: true,
+      default:
+        "A new church program has been added.\nProgram: {{program_title}}\nDate: {{program_date}}\nLocation: {{program_location}}\nDetails: {{program_description}}\n- {{church_name}}",
+    },
+    memberAddedNotificationTemplate: {
+      type: String,
+      trim: true,
+      default:
+        "Hello {{member_name}}, welcome to our church family. Your membership profile has been created successfully. - {{church_name}}",
+    },
+    donationNotificationTemplate: {
+      type: String,
+      trim: true,
+      default:
+        "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
+    },
+    userAddedNotificationTemplate: {
+      type: String,
+      trim: true,
+      default:
+        "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}",
+    },
   },
   { timestamps: true }
 );

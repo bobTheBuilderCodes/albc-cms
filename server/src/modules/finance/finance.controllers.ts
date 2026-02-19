@@ -26,6 +26,7 @@ export const createTransaction = asyncHandler(async (req: Request, res: Response
       type: transaction.type,
       amount: transaction.amount,
       note: transaction.note,
+      memberId: transaction.member ? String(transaction.member) : undefined,
     })
     .catch((error) => {
       console.error("Failed to send finance notification email", error);

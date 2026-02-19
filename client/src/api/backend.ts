@@ -483,6 +483,10 @@ type ApiSettings = {
   enableMemberAddedNotifications?: boolean;
   enableDonationNotifications?: boolean;
   enableUserAddedNotifications?: boolean;
+  programNotificationTemplate?: string;
+  memberAddedNotificationTemplate?: string;
+  donationNotificationTemplate?: string;
+  userAddedNotificationTemplate?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -506,6 +510,10 @@ export type SettingsPayload = {
   enableMemberAddedNotifications?: boolean;
   enableDonationNotifications?: boolean;
   enableUserAddedNotifications?: boolean;
+  programNotificationTemplate?: string;
+  memberAddedNotificationTemplate?: string;
+  donationNotificationTemplate?: string;
+  userAddedNotificationTemplate?: string;
 };
 
 export async function fetchSettings(): Promise<SettingsPayload | null> {
@@ -532,6 +540,10 @@ export async function fetchSettings(): Promise<SettingsPayload | null> {
     enableMemberAddedNotifications: settings.enableMemberAddedNotifications,
     enableDonationNotifications: settings.enableDonationNotifications,
     enableUserAddedNotifications: settings.enableUserAddedNotifications,
+    programNotificationTemplate: settings.programNotificationTemplate,
+    memberAddedNotificationTemplate: settings.memberAddedNotificationTemplate,
+    donationNotificationTemplate: settings.donationNotificationTemplate,
+    userAddedNotificationTemplate: settings.userAddedNotificationTemplate,
   };
 }
 
@@ -554,6 +566,10 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     enableMemberAddedNotifications: payload.enableMemberAddedNotifications,
     enableDonationNotifications: payload.enableDonationNotifications,
     enableUserAddedNotifications: payload.enableUserAddedNotifications,
+    programNotificationTemplate: payload.programNotificationTemplate,
+    memberAddedNotificationTemplate: payload.memberAddedNotificationTemplate,
+    donationNotificationTemplate: payload.donationNotificationTemplate,
+    userAddedNotificationTemplate: payload.userAddedNotificationTemplate,
   };
 
   if (payload.id) {
@@ -577,6 +593,10 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       enableMemberAddedNotifications: res.data.data.enableMemberAddedNotifications,
       enableDonationNotifications: res.data.data.enableDonationNotifications,
       enableUserAddedNotifications: res.data.data.enableUserAddedNotifications,
+      programNotificationTemplate: res.data.data.programNotificationTemplate,
+      memberAddedNotificationTemplate: res.data.data.memberAddedNotificationTemplate,
+      donationNotificationTemplate: res.data.data.donationNotificationTemplate,
+      userAddedNotificationTemplate: res.data.data.userAddedNotificationTemplate,
     };
   }
 
@@ -600,6 +620,10 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     enableMemberAddedNotifications: res.data.data.enableMemberAddedNotifications,
     enableDonationNotifications: res.data.data.enableDonationNotifications,
     enableUserAddedNotifications: res.data.data.enableUserAddedNotifications,
+    programNotificationTemplate: res.data.data.programNotificationTemplate,
+    memberAddedNotificationTemplate: res.data.data.memberAddedNotificationTemplate,
+    donationNotificationTemplate: res.data.data.donationNotificationTemplate,
+    userAddedNotificationTemplate: res.data.data.userAddedNotificationTemplate,
   };
 }
 
