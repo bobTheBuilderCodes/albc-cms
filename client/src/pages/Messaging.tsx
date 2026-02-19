@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { SMSLog, SMSTemplate, Member, ChurchProgram } from '../types';
+import type { SMSLog, SMSTemplate, Member } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
+import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
-import { fetchMembers, fetchPrograms } from '../api/backend';
+import { fetchMembers, fetchSettings, sendSmsBroadcast } from '../api/backend';
 import { 
   MessageSquare, 
   Send, 
@@ -24,19 +26,45 @@ export function Messaging() {
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>([]);
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [programs, setPrograms] = useState<ChurchProgram[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | 'sent' | 'failed' | 'pending'>('all');
   const [filterType, setFilterType] = useState<'all' | 'program_reminder' | 'birthday' | 'manual' | 'announcement'>('all');
   const { user } = useAuth();
+  const toast = useToast();
 
   useEffect(() => {
-    loadData().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load messaging data'));
+    loadData().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load messaging data'));
   }, []);
 
   const loadData = async () => {
-    const [memberData, programData] = await Promise.all([fetchMembers(), fetchPrograms()]);
+    const [memberData, settings] = await Promise.all([
+      fetchMembers(),
+      fetchSettings(),
+    ]);
     setMembers(memberData);
-    setPrograms(programData);
+    let configuredDepartments: string[] = [];
+
+    if (settings?.departments && settings.departments.length > 0) {
+      configuredDepartments = settings.departments;
+    } else {
+      const localDepartmentsRaw = localStorage.getItem('cms_departments');
+      if (localDepartmentsRaw) {
+        try {
+          const localDepartments = JSON.parse(localDepartmentsRaw);
+          if (Array.isArray(localDepartments)) {
+            configuredDepartments = localDepartments.filter(Boolean);
+          }
+        } catch {
+          configuredDepartments = [];
+        }
+      }
+    }
+
+    if (configuredDepartments.length > 0) {
+      setDepartments(configuredDepartments);
+    } else {
+      setDepartments(Array.from(new Set(memberData.map((m) => m.department))).filter(Boolean));
+    }
 
     setSmsLogs(JSON.parse(localStorage.getItem('cms_sms_logs') || '[]'));
     setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
@@ -184,6 +212,7 @@ export function Messaging() {
         {activeTab === 'templates' && (
           <TemplatesTab
             templates={templates}
+            toast={toast}
             onUpdate={(updated) => {
               setTemplates(updated);
               localStorage.setItem('cms_sms_templates', JSON.stringify(updated));
@@ -194,8 +223,9 @@ export function Messaging() {
         {activeTab === 'send' && (
           <SendMessageTab
             members={members}
-            programs={programs}
+            departments={departments}
             templates={templates}
+            toast={toast}
             onSend={(newLogs) => {
               const updated = [...smsLogs, ...newLogs];
               setSmsLogs(updated);
@@ -337,17 +367,27 @@ function SMSLogsTab({
 
 function TemplatesTab({ 
   templates, 
+  toast,
   onUpdate 
 }: { 
   templates: SMSTemplate[]; 
+  toast: { success: (message: string) => void; error: (message: string) => void; info: (message: string) => void };
   onUpdate: (templates: SMSTemplate[]) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
+  const { confirm } = useConfirm();
 
-  const deleteTemplate = (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+  const deleteTemplate = async (id: string) => {
+    const confirmed = await confirm({
+      title: "Delete Template",
+      message: "Are you sure you want to delete this template?",
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     onUpdate(templates.filter(t => t.id !== id));
+    toast.success("Template deleted");
   };
 
   return (
@@ -385,7 +425,7 @@ function TemplatesTab({
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setEditingTemplate(template)}
-                  className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  className="p-2 text-primary-600 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
@@ -447,13 +487,15 @@ function TemplatesTab({
 
 function SendMessageTab({ 
   members, 
-  programs,
+  departments,
   templates,
+  toast,
   onSend 
 }: { 
   members: Member[];
-  programs: ChurchProgram[];
+  departments: string[];
   templates: SMSTemplate[];
+  toast: { success: (message: string) => void; error: (message: string) => void; info: (message: string) => void };
   onSend: (logs: SMSLog[]) => void;
 }) {
   const [audience, setAudience] = useState<'all' | 'department' | 'selected'>('all');
@@ -461,9 +503,6 @@ function SendMessageTab({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
-  const { user } = useAuth();
-
-  const departments = Array.from(new Set(members.map(m => m.department)));
 
   const getRecipients = () => {
     if (audience === 'all') return members;
@@ -471,35 +510,35 @@ function SendMessageTab({
     return members.filter(m => selectedMembers.includes(m.id));
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const recipients = getRecipients();
     
     if (recipients.length === 0) {
-      alert('Please select at least one recipient');
+      toast.info('Please select at least one recipient');
       return;
     }
 
     if (!message.trim()) {
-      alert('Please enter a message');
+      toast.info('Please enter a message');
       return;
     }
 
-    const newLogs: SMSLog[] = recipients.map(member => ({
-      id: `sms-${Date.now()}-${member.id}-${Math.random()}`,
-      recipientId: member.id,
-      recipientName: member.fullName,
-      recipientPhone: member.phoneNumber,
-      message,
-      type: 'manual',
-      status: Math.random() > 0.05 ? 'sent' : 'failed',
-      sentAt: new Date().toISOString(),
-      failureReason: Math.random() > 0.05 ? undefined : 'Network error',
-      createdBy: user!.name,
-      createdAt: new Date().toISOString(),
-    }));
+    try {
+      const result = await sendSmsBroadcast({
+        message,
+        recipients: recipients.map((member) => ({
+          memberId: member.id,
+          name: member.fullName,
+          phone: member.phoneNumber,
+        })),
+      });
 
-    onSend(newLogs);
-    alert(`Successfully sent ${newLogs.filter(l => l.status === 'sent').length} messages!`);
+      const newLogs = result.logs as SMSLog[];
+      onSend(newLogs);
+      toast.success(`Successfully sent ${newLogs.length} messages`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to send SMS');
+    }
   };
 
   const applyTemplate = (templateId: string) => {
@@ -627,7 +666,7 @@ function SendMessageTab({
         </div>
 
         <button
-          onClick={handleSend}
+          onClick={() => handleSend()}
           disabled={recipients.length === 0 || !message.trim()}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >

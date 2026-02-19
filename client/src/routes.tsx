@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import { UserManagement } from "./pages/UserManagement";
 import { ModuleGuard } from "./components/ModuleGuard";
+import { ProfileSettings } from "./pages/ProfileSettings";
 
 export const router = createBrowserRouter([
   {
@@ -101,6 +102,10 @@ export const router = createBrowserRouter([
             <Settings />
           </ModuleGuard>
         ),
+      },
+      {
+        path: "profile-settings",
+        element: <ProfileSettings />,
       },
       {
         path: "*",

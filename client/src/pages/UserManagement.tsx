@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
+import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
 import { Pagination } from '../components/Pagination';
 import { createUser as apiCreateUser, deleteUser as apiDeleteUser, fetchUsers, updateUser as apiUpdateUser } from '../api/backend';
@@ -42,9 +44,11 @@ export function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const { user } = useAuth();
+  const { confirm } = useConfirm();
+  const toast = useToast();
 
   useEffect(() => {
-    loadUsers().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load users'));
+    loadUsers().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load users'));
   }, []);
 
   useEffect(() => {
@@ -80,15 +84,22 @@ export function UserManagement() {
 
   const deleteUser = async (id: string) => {
     if (id === user?.id) {
-      alert('You cannot delete your own account!');
+      toast.info('You cannot delete your own account');
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    const confirmed = await confirm({
+      title: "Delete User",
+      message: "Are you sure you want to delete this user?",
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
 
     await apiDeleteUser(id);
     const updated = users.filter((u) => u.id !== id);
     setUsers(updated);
+    toast.success("User deleted");
 
     addAuditLog({
       id: Date.now().toString(),
@@ -104,7 +115,7 @@ export function UserManagement() {
   };
 
   const toggleUserStatus = () => {
-    alert('User activation/deactivation is not supported by the backend yet.');
+    toast.info('User activation/deactivation is not supported by the backend yet');
   };
 
   const indexOfLastUser = currentPage * itemsPerPage;
@@ -189,11 +200,7 @@ export function UserManagement() {
           </select>
         </div>
 
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-neutral-600">
-            Showing <span className="font-semibold text-primary-600">{filteredUsers.length}</span> of <span className="font-semibold">{users.length}</span> users
-          </p>
-        </div>
+        
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
@@ -210,7 +217,8 @@ export function UserManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
-              {currentUsers.map((usr) => (
+              {currentUsers.length > 0 ? (
+                currentUsers.map((usr) => (
                 <tr key={usr.id} className="hover:bg-neutral-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -240,7 +248,7 @@ export function UserManagement() {
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {usr.modules.slice(0, 3).map(mod => (
-                        <span key={mod} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-primary-50 text-primary-700 font-medium">
+                        <span key={mod} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-primary-700 font-medium">
                           {allModules.find(m => m.id === mod)?.label}
                         </span>
                       ))}
@@ -268,13 +276,13 @@ export function UserManagement() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => setEditingUser(usr)}
-                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                        className="p-2 text-primary-600 hover:bg-gray-50 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                      onClick={() => deleteUser(usr.id).catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to delete user'))}
+                      onClick={() => deleteUser(usr.id).catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to delete user'))}
                         disabled={usr.id === user?.id}
                         className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete"
@@ -284,7 +292,24 @@ export function UserManagement() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Search className="w-8 h-8 text-neutral-300" />
+                      <p className="text-sm text-neutral-700 font-medium">
+                        {searchQuery ? "No users match your search" : "No users found"}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        {searchQuery
+                          ? "Try a different name or email."
+                          : "Create users to see them listed here."}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -316,6 +341,7 @@ export function UserManagement() {
               });
               const updated = users.map((u) => (u.id === saved.id ? saved : u));
               setUsers(updated);
+              toast.success("User updated");
               addAuditLog({
                 id: Date.now().toString(),
                 userId: user!.id,
@@ -338,6 +364,7 @@ export function UserManagement() {
               });
               const updated = [...users, userToAdd];
               setUsers(updated);
+              toast.success("User created");
               addAuditLog({
                 id: Date.now().toString(),
                 userId: user!.id,

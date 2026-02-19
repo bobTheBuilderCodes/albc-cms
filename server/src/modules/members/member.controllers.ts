@@ -9,6 +9,7 @@ export const createMember = asyncHandler(async (req: Request, res: Response) => 
   const member = await Member.create({
     firstName: ensureString(req.body.firstName, "firstName"),
     lastName: ensureString(req.body.lastName, "lastName"),
+    department: req.body.department,
     phone: req.body.phone,
     email: req.body.email,
     address: req.body.address,
@@ -46,6 +47,7 @@ export const updateMember = asyncHandler(async (req: Request, res: Response) => 
 
   if (isDefined(req.body.firstName)) updates.firstName = ensureString(req.body.firstName, "firstName");
   if (isDefined(req.body.lastName)) updates.lastName = ensureString(req.body.lastName, "lastName");
+  if (isDefined(req.body.department)) updates.department = req.body.department;
   if (isDefined(req.body.phone)) updates.phone = req.body.phone;
   if (isDefined(req.body.email)) updates.email = req.body.email;
   if (isDefined(req.body.address)) updates.address = req.body.address;

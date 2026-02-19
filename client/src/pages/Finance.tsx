@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Donation, Expenditure, Member } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
 import { createFinanceTransaction, fetchFinance, fetchMembers } from '../api/backend';
 import { downloadReceipt, DonationReceipt } from '../components/DonationReceipt';
@@ -35,6 +36,7 @@ export function Finance() {
   const [showAddExpenditureModal, setShowAddExpenditureModal] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<Donation | null>(null);
   const { user } = useAuth();
+  const toast = useToast();
 
   useEffect(() => {
     const load = async () => {
@@ -43,7 +45,7 @@ export function Finance() {
       setExpenditures(finance.expenditures);
       setMembers(mem);
     };
-    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load finance data'));
+    load().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load finance data'));
   }, []);
 
   const filteredDonations = donations.filter(d => {
@@ -253,6 +255,7 @@ export function Finance() {
               const finance = await fetchFinance();
               setDonations(finance.donations);
               setExpenditures(finance.expenditures);
+              toast.success("Income recorded");
 
               addAuditLog({
                 id: Date.now().toString(),
@@ -267,7 +270,7 @@ export function Finance() {
 
               setShowAddIncomeModal(false);
             } catch (e: any) {
-              alert(e?.response?.data?.message || e?.message || 'Failed to record income');
+              toast.error(e?.response?.data?.message || e?.message || 'Failed to record income');
             }
           }}
         />
@@ -289,6 +292,7 @@ export function Finance() {
               const finance = await fetchFinance();
               setDonations(finance.donations);
               setExpenditures(finance.expenditures);
+              toast.success("Expenditure recorded");
 
               addAuditLog({
                 id: Date.now().toString(),
@@ -303,7 +307,7 @@ export function Finance() {
 
               setShowAddExpenditureModal(false);
             } catch (e: any) {
-              alert(e?.response?.data?.message || e?.message || 'Failed to record expenditure');
+              toast.error(e?.response?.data?.message || e?.message || 'Failed to record expenditure');
             }
           }}
         />
@@ -420,7 +424,7 @@ function IncomeTab({
                   {donation.memberName}
                 </td>
                 <td className="px-6 py-4">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-primary-50 text-primary-700 capitalize font-semibold">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-gray-50 text-primary-700 capitalize font-semibold">
                     {donation.type}
                   </span>
                 </td>
@@ -440,7 +444,7 @@ function IncomeTab({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setViewingReceipt(donation)}
-                      className="p-1.5 hover:bg-primary-50 text-primary-600 rounded-lg transition-colors"
+                      className="p-1.5 hover:bg-gray-50 text-primary-600 rounded-lg transition-colors"
                       title="View Receipt"
                     >
                       <Eye className="w-4 h-4" />
@@ -766,7 +770,7 @@ function IncomeModal({
 
             {/* Receipt Generation Checkbox */}
             <div className="col-span-2">
-              <div className="flex items-start gap-3 p-4 bg-primary-50 border border-primary-200 rounded-xl">
+              <div className="flex items-start gap-3 p-4 bg-gray-50 border border-primary-200 rounded-xl">
                 <input
                   type="checkbox"
                   id="generateReceipt"

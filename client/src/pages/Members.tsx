@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { Member } from "../types";
 import { useAuth } from "../contexts/AuthContext";
+import { useConfirm } from "../contexts/ConfirmContext";
+import { useToast } from "../contexts/ToastContext";
 import { addAuditLog } from "../utils/mockData";
 import {
   Search,
@@ -35,7 +37,13 @@ export function Members() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const { user } = useAuth();
+  const { confirm } = useConfirm();
+  const toast = useToast();
   const navigate = useNavigate();
+  const currentMembers = filteredMembers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -44,7 +52,7 @@ export function Members() {
     };
 
     load().catch((e) => {
-      alert(e?.response?.data?.message || e?.message || "Failed to load members");
+      toast.error(e?.response?.data?.message || e?.message || "Failed to load members");
     });
   }, []);
 
@@ -79,12 +87,19 @@ export function Members() {
 
   const departments = Array.from(new Set(members.map((m) => m.department)));
 
-  const deleteMember = (id: string) => {
-    if (!confirm("Are you sure you want to delete this member?")) return;
+  const deleteMember = async (id: string) => {
+    const confirmed = await confirm({
+      title: "Delete Member",
+      message: "Are you sure you want to delete this member?",
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
 
     apiDeleteMember(id)
       .then(() => setMembers((prev) => prev.filter((m) => m.id !== id)))
-      .catch((e) => alert(e?.response?.data?.message || e?.message || "Failed to delete member"));
+      .then(() => toast.success("Member deleted"))
+      .catch((e) => toast.error(e?.response?.data?.message || e?.message || "Failed to delete member"));
 
     addAuditLog({
       id: Date.now().toString(),
@@ -149,7 +164,7 @@ export function Members() {
 
             <button
               onClick={() => setShowBulkUploadModal(true)}
-              className="bg-white flex items-center gap-2 px-4 py-2 border border-gray-200 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+              className="bg-white flex items-center gap-2 px-4 py-2 border border-gray-200 text-primary-600 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Upload className="w-5 h-5" />
               Bulk Upload
@@ -227,12 +242,8 @@ export function Members() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200">
-              {filteredMembers
-                .slice(
-                  (currentPage - 1) * itemsPerPage,
-                  currentPage * itemsPerPage
-                )
-                .map((member) => (
+              {currentMembers.length > 0 ? (
+                currentMembers.map((member) => (
                   <tr
                     key={member.id}
                     className="hover:bg-neutral-50 transition-colors"
@@ -298,7 +309,7 @@ export function Members() {
                         </button>
                         <button
                           onClick={() => setEditingMember(member)}
-                          className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                          className="p-2 text-primary-600 hover:bg-gray-50 rounded-lg transition-colors"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
@@ -313,7 +324,24 @@ export function Members() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Search className="w-8 h-8 text-neutral-300" />
+                      <p className="text-sm text-neutral-700 font-medium">
+                        {searchQuery ? "No members match your search" : "No members found"}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        {searchQuery
+                          ? "Try a different name, email, or phone number."
+                          : "Add members to see them listed here."}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -338,6 +366,7 @@ export function Members() {
               if (editingMember) {
                 const saved = await apiUpdateMember(editingMember.id, member);
                 setMembers((prev) => prev.map((m) => (m.id === saved.id ? saved : m)));
+                toast.success("Member updated");
                 addAuditLog({
                   id: Date.now().toString(),
                   userId: user!.id,
@@ -352,6 +381,7 @@ export function Members() {
               } else {
                 const saved = await apiCreateMember(member);
                 setMembers((prev) => [saved, ...prev]);
+                toast.success("Member created");
                 addAuditLog({
                   id: Date.now().toString(),
                   userId: user!.id,
@@ -368,7 +398,7 @@ export function Members() {
               setShowAddModal(false);
               setEditingMember(null);
             } catch (e: any) {
-              alert(e?.response?.data?.message || e?.message || "Failed to save member");
+              toast.error(e?.response?.data?.message || e?.message || "Failed to save member");
             }
           }}
         />
@@ -382,6 +412,7 @@ export function Members() {
               const saved = await Promise.all(newMembers.map((m) => apiCreateMember(m)));
               setMembers((prev) => [...saved, ...prev]);
               setShowBulkUploadModal(false);
+              toast.success(`Imported ${saved.length} members`);
 
               addAuditLog({
                 id: Date.now().toString(),
@@ -394,7 +425,7 @@ export function Members() {
                 timestamp: new Date().toISOString(),
               });
             } catch (e: any) {
-              alert(e?.response?.data?.message || e?.message || "Bulk import failed");
+              toast.error(e?.response?.data?.message || e?.message || "Bulk import failed");
             }
           }}
         />
@@ -403,7 +434,7 @@ export function Members() {
   );
 }
 
-function MemberModal({
+export function MemberModal({
   member,
   onClose,
   onSave,
@@ -853,7 +884,7 @@ function BulkUploadModal({
           {/* Download Template */}
           <button
             onClick={downloadTemplate}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-primary-300 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-primary-300 text-primary-600 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <Download className="w-5 h-5" />
             Download CSV Template
@@ -869,7 +900,7 @@ function BulkUploadModal({
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gray-50 file:text-primary-600 hover:file:bg-gray-100"
               />
             </div>
             {file && (

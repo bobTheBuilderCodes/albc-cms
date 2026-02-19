@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { ChurchProgram } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
+import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
 import { createProgram as apiCreateProgram, deleteProgram as apiDeleteProgram, fetchPrograms, updateProgram as apiUpdateProgram } from '../api/backend';
 import { 
@@ -25,13 +27,15 @@ export function Programs() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProgram, setEditingProgram] = useState<ChurchProgram | null>(null);
   const { user } = useAuth();
+  const { confirm } = useConfirm();
+  const toast = useToast();
 
   useEffect(() => {
     const load = async () => {
       const data = await fetchPrograms();
       setPrograms(data);
     };
-    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load programs'));
+    load().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load programs'));
   }, []);
 
   useEffect(() => {
@@ -52,12 +56,19 @@ export function Programs() {
     setFilteredPrograms(filtered);
   };
 
-  const deleteProgram = (id: string) => {
-    if (!confirm('Are you sure you want to delete this program?')) return;
+  const deleteProgram = async (id: string) => {
+    const confirmed = await confirm({
+      title: "Delete Program",
+      message: "Are you sure you want to delete this program?",
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     
     apiDeleteProgram(id)
       .then(() => setPrograms((prev) => prev.filter((p) => p.id !== id)))
-      .catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to delete program'));
+      .then(() => toast.success("Program deleted"))
+      .catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to delete program'));
 
     addAuditLog({
       id: Date.now().toString(),
@@ -186,6 +197,7 @@ export function Programs() {
               if (editingProgram) {
                 const saved = await apiUpdateProgram(editingProgram.id, program);
                 setPrograms((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+                toast.success("Program updated");
                 addAuditLog({
                   id: Date.now().toString(),
                   userId: user!.id,
@@ -200,6 +212,7 @@ export function Programs() {
               } else {
                 const saved = await apiCreateProgram(program);
                 setPrograms((prev) => [saved, ...prev]);
+                toast.success("Program created");
                 addAuditLog({
                   id: Date.now().toString(),
                   userId: user!.id,
@@ -216,7 +229,7 @@ export function Programs() {
               setShowAddModal(false);
               setEditingProgram(null);
             } catch (e: any) {
-              alert(e?.response?.data?.message || e?.message || 'Failed to save program');
+              toast.error(e?.response?.data?.message || e?.message || 'Failed to save program');
             }
           }}
         />
@@ -254,7 +267,7 @@ function ProgramCard({
         <div className="flex items-center gap-1 ml-2">
           <button
             onClick={onEdit}
-            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+            className="p-2 text-primary-600 hover:bg-gray-50 rounded-lg transition-colors"
           >
             <Edit className="w-4 h-4" />
           </button>
@@ -338,7 +351,7 @@ function CalendarView({ programs }: { programs: ChurchProgram[] }) {
       <div
         key={day}
         className={`h-24 border border-neutral-200 p-2 ${
-          isToday ? 'bg-primary-50 border-primary-300' : 'bg-white'
+          isToday ? 'bg-gray-50 border-primary-300' : 'bg-white'
         }`}
       >
         <div className={`text-sm mb-1 ${isToday ? 'text-primary-700 font-bold' : 'text-neutral-600'}`}>

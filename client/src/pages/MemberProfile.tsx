@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import type { Member, Attendance, Donation, PrayerRequest, ChurchProgram } from '../types';
-import { fetchAttendance, fetchFinance, fetchMember, fetchPrograms } from '../api/backend';
+import { fetchAttendance, fetchFinance, fetchMember, fetchPrograms, updateMember as apiUpdateMember } from '../api/backend';
+import { useToast } from '../contexts/ToastContext';
+import { MemberModal } from './Members';
 import { 
   ArrowLeft, 
   Mail, 
@@ -29,12 +31,14 @@ type TabType = 'attendance' | 'donations' | 'prayers';
 export function MemberProfile() {
   const { memberId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [member, setMember] = useState<Member | null>(null);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>([]);
   const [programs, setPrograms] = useState<ChurchProgram[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('attendance');
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showAddPrayer, setShowAddPrayer] = useState(false);
   const [newPrayer, setNewPrayer] = useState({
     title: '',
@@ -173,7 +177,7 @@ export function MemberProfile() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'answered': return 'bg-success-50 text-success-700 border-success-200';
-      case 'active': return 'bg-primary-50 text-primary-700 border-primary-200';
+      case 'active': return 'bg-gray-50 text-primary-700 border-primary-200';
       default: return 'bg-neutral-100 text-neutral-600 border-neutral-200';
     }
   };
@@ -248,7 +252,7 @@ export function MemberProfile() {
                 </div>
 
                 <button
-                  onClick={() => navigate(`/members?edit=${member.id}`)}
+                  onClick={() => setShowEditModal(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-white/90 transition-colors font-semibold shadow-lg"
                 >
                   <Edit className="w-4 h-4" />
@@ -335,7 +339,7 @@ export function MemberProfile() {
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
                 )}
                 {prayerRequests.filter(p => p.status === 'active').length > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center w-5 h-5 bg-primary-500 text-white text-xs font-bold rounded-full">
+                  <span className="ml-2 inline-flex items-center justify-center w-5 h-5 bg-gray-500 text-white text-xs font-bold rounded-full">
                     {prayerRequests.filter(p => p.status === 'active').length}
                   </span>
                 )}
@@ -462,7 +466,7 @@ export function MemberProfile() {
 
                 {/* Add Prayer Form */}
                 {showAddPrayer && (
-                  <div className="mb-5 p-5 bg-primary-50 rounded-xl border border-primary-200">
+                  <div className="mb-5 p-5 bg-gray-50 rounded-xl border border-primary-200">
                     <h4 className="text-neutral-900 font-semibold mb-4 text-base">New Prayer Request</h4>
                     <div className="space-y-3.5">
                       <div>
@@ -602,6 +606,22 @@ export function MemberProfile() {
             )}
           </div>
         </div>
+        {showEditModal && (
+          <MemberModal
+            member={member}
+            onClose={() => setShowEditModal(false)}
+            onSave={async (updatedMember) => {
+              try {
+                const saved = await apiUpdateMember(member.id, updatedMember);
+                setMember(saved);
+                setShowEditModal(false);
+                toast.success("Member updated");
+              } catch (e: any) {
+                toast.error(e?.response?.data?.message || e?.message || 'Failed to update member');
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

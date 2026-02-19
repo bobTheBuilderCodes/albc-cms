@@ -16,6 +16,10 @@ export const createSettings = asyncHandler(async (req: Request, res: Response) =
     phone: req.body.phone,
     email: req.body.email,
     smsEnabled: Boolean(req.body.smsEnabled),
+    smsProvider: req.body.smsProvider || "arkesel",
+    smsApiKey: req.body.smsApiKey,
+    smsSenderId: req.body.smsSenderId,
+    departments: Array.isArray(req.body.departments) ? req.body.departments : [],
     enableBirthdayNotifications:
       req.body.enableBirthdayNotifications === undefined
         ? true
@@ -53,6 +57,12 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   if (isDefined(req.body.phone)) updates.phone = req.body.phone;
   if (isDefined(req.body.email)) updates.email = req.body.email;
   if (isDefined(req.body.smsEnabled)) updates.smsEnabled = Boolean(req.body.smsEnabled);
+  if (isDefined(req.body.smsProvider)) updates.smsProvider = req.body.smsProvider;
+  if (isDefined(req.body.smsApiKey)) updates.smsApiKey = req.body.smsApiKey;
+  if (isDefined(req.body.smsSenderId)) updates.smsSenderId = req.body.smsSenderId;
+  if (isDefined(req.body.departments)) {
+    updates.departments = Array.isArray(req.body.departments) ? req.body.departments : [];
+  }
   if (isDefined(req.body.enableBirthdayNotifications)) {
     updates.enableBirthdayNotifications = Boolean(req.body.enableBirthdayNotifications);
   }

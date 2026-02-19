@@ -52,7 +52,7 @@ export function DonationReceipt({ donation }: DonationReceiptProps) {
 
       {/* Receipt Title */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border-2 border-primary-200 rounded-lg mb-2">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 border-2 border-primary-200 rounded-lg mb-2">
           <FileText className="w-5 h-5 text-primary-600" />
           <h2 className="text-xl font-bold text-primary-700">DONATION RECEIPT</h2>
         </div>
@@ -145,7 +145,11 @@ export function downloadReceipt(donation: Donation) {
   // Create a new window for printing
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    alert('Please allow popups to download the receipt');
+    window.dispatchEvent(
+      new CustomEvent("app-toast", {
+        detail: { type: "error", message: "Please allow popups to download the receipt" },
+      })
+    );
     return;
   }
 

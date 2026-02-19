@@ -6,6 +6,10 @@ export interface ISettings extends Document {
   phone?: string;
   email?: string;
   smsEnabled: boolean;
+  smsProvider: string;
+  smsApiKey?: string;
+  smsSenderId?: string;
+  departments: string[];
   enableBirthdayNotifications: boolean;
   enableProgramReminders: boolean;
   enableMemberAddedNotifications: boolean;
@@ -20,6 +24,10 @@ const settingsSchema = new Schema<ISettings>(
     phone: { type: String, trim: true },
     email: { type: String, trim: true, lowercase: true },
     smsEnabled: { type: Boolean, default: false },
+    smsProvider: { type: String, default: "arkesel", trim: true },
+    smsApiKey: { type: String, trim: true },
+    smsSenderId: { type: String, trim: true },
+    departments: { type: [String], default: [] },
     enableBirthdayNotifications: { type: Boolean, default: true },
     enableProgramReminders: { type: Boolean, default: true },
     enableMemberAddedNotifications: { type: Boolean, default: true },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Church, Mail, Lock, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
 
   
@@ -17,9 +19,10 @@ export default function Login() {
   
     try {
       await login(email, password);
+      toast.success("Login successful");
       navigate("/dashboard");
     } catch (error: any) {
-      alert(error.response?.data?.message || "Login failed");
+      toast.error(error.response?.data?.message || "Login failed");
     }
   };
 

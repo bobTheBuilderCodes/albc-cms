@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Donation, Member } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
 import { createFinanceTransaction, fetchFinance, fetchMembers } from '../api/backend';
 import { downloadReceipt, DonationReceipt } from '../components/DonationReceipt';
@@ -26,6 +27,7 @@ export function Donations() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<Donation | null>(null);
   const { user } = useAuth();
+  const toast = useToast();
 
   useEffect(() => {
     const load = async () => {
@@ -33,7 +35,7 @@ export function Donations() {
       setDonations(finance.donations);
       setMembers(mem);
     };
-    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load donations'));
+    load().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load donations'));
   }, []);
 
   const filteredDonations = donations.filter(d => {
@@ -178,7 +180,7 @@ export function Donations() {
                     {donation.memberName}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-primary-50 text-primary-700 capitalize">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-gray-50 text-primary-700 capitalize">
                       {donation.type}
                     </span>
                   </td>
@@ -198,7 +200,7 @@ export function Donations() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setViewingReceipt(donation)}
-                        className="p-1.5 hover:bg-primary-50 text-primary-600 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-gray-50 text-primary-600 rounded-lg transition-colors"
                         title="View Receipt"
                       >
                         <Eye className="w-4 h-4" />
@@ -249,6 +251,7 @@ export function Donations() {
 
               const finance = await fetchFinance();
               setDonations(finance.donations);
+              toast.success("Donation recorded");
 
               addAuditLog({
                 id: Date.now().toString(),
@@ -263,7 +266,7 @@ export function Donations() {
 
               setShowAddModal(false);
             } catch (e: any) {
-              alert(e?.response?.data?.message || e?.message || 'Failed to record donation');
+              toast.error(e?.response?.data?.message || e?.message || 'Failed to record donation');
             }
           }}
         />
@@ -464,7 +467,7 @@ function DonationModal({
 
             {/* Receipt Generation Checkbox */}
             <div className="col-span-2">
-              <div className="flex items-start gap-3 p-4 bg-primary-50 border border-primary-200 rounded-xl">
+              <div className="flex items-start gap-3 p-4 bg-gray-50 border border-primary-200 rounded-xl">
                 <input
                   type="checkbox"
                   id="generateReceipt"

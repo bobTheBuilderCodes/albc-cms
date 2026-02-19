@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
+import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
 import { fetchSettings, upsertSettings } from '../api/backend';
 import { 
@@ -20,6 +22,8 @@ import {
 
 export function Settings() {
   const { user } = useAuth();
+  const { confirm } = useConfirm();
+  const toast = useToast();
   const [settingsId, setSettingsId] = useState<string | undefined>(undefined);
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('cms_settings');
@@ -28,14 +32,16 @@ export function Settings() {
       email: 'info@gracechurch.com',
       phone: '+233 24 123 4567',
       address: '123 Church Street, Accra, Ghana',
+      smsEnabled: true,
+      smsProvider: 'arkesel',
+      smsApiKey: '',
+      smsSenderId: '',
       enableBirthdayNotifications: true,
       enableProgramReminders: true,
       enableMemberAddedNotifications: true,
       enableDonationNotifications: true,
       enableUserAddedNotifications: true,
       reminderDaysBefore: 1,
-      smsProvider: 'arkesel',
-      smsApiKey: 'YOUR_API_KEY_HERE',
     };
   });
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -64,6 +70,10 @@ export function Settings() {
           email: backendSettings.email || prev.email,
           phone: backendSettings.phone || prev.phone,
           address: backendSettings.address || prev.address,
+          smsEnabled: backendSettings.smsEnabled ?? prev.smsEnabled,
+          smsProvider: backendSettings.smsProvider ?? prev.smsProvider,
+          smsApiKey: backendSettings.smsApiKey ?? prev.smsApiKey,
+          smsSenderId: backendSettings.smsSenderId ?? prev.smsSenderId,
           enableBirthdayNotifications:
             backendSettings.enableBirthdayNotifications ?? prev.enableBirthdayNotifications,
           enableProgramReminders:
@@ -75,8 +85,12 @@ export function Settings() {
           enableUserAddedNotifications:
             backendSettings.enableUserAddedNotifications ?? prev.enableUserAddedNotifications,
         }));
+        if (backendSettings.departments && backendSettings.departments.length > 0) {
+          setDepartments(backendSettings.departments);
+          localStorage.setItem('cms_departments', JSON.stringify(backendSettings.departments));
+        }
       } catch (e: any) {
-        alert(e?.response?.data?.message || e?.message || 'Failed to load settings');
+        toast.error(e?.response?.data?.message || e?.message || 'Failed to load settings');
       } finally {
         setLoadingSettings(false);
       }
@@ -92,7 +106,11 @@ export function Settings() {
       email: settings.email,
       phone: settings.phone,
       address: settings.address,
-      smsEnabled: Boolean(settings.enableBirthdayNotifications || settings.enableProgramReminders),
+      smsEnabled: Boolean(settings.smsEnabled),
+      smsProvider: settings.smsProvider,
+      smsApiKey: settings.smsApiKey,
+      smsSenderId: settings.smsSenderId,
+      departments,
       enableBirthdayNotifications: settings.enableBirthdayNotifications,
       enableProgramReminders: settings.enableProgramReminders,
       enableMemberAddedNotifications: settings.enableMemberAddedNotifications,
@@ -108,6 +126,7 @@ export function Settings() {
     );
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+    toast.success("Settings saved");
 
     addAuditLog({
       id: Date.now().toString(),
@@ -124,7 +143,7 @@ export function Settings() {
   const handleAddDepartment = () => {
     if (!newDepartment.trim()) return;
     if (departments.includes(newDepartment.trim())) {
-      alert('Department already exists!');
+      toast.info('Department already exists');
       return;
     }
     const updated = [...departments, newDepartment.trim()];
@@ -151,7 +170,7 @@ export function Settings() {
       return;
     }
     if (departments.includes(editValue.trim())) {
-      alert('Department already exists!');
+      toast.info('Department already exists');
       return;
     }
     const updated = departments.map(d => d === oldName ? editValue.trim() : d);
@@ -172,11 +191,18 @@ export function Settings() {
     });
   };
 
-  const handleDeleteDepartment = (name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}" department?`)) return;
+  const handleDeleteDepartment = async (name: string) => {
+    const confirmed = await confirm({
+      title: "Delete Department",
+      message: `Are you sure you want to delete \"${name}\" department?`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     const updated = departments.filter(d => d !== name);
     setDepartments(updated);
     localStorage.setItem('cms_departments', JSON.stringify(updated));
+    toast.success("Department deleted");
 
     addAuditLog({
       id: Date.now().toString(),
@@ -191,8 +217,14 @@ export function Settings() {
     });
   };
 
-  const clearAllData = () => {
-    if (!confirm('Are you sure you want to clear all data? This action cannot be undone!')) return;
+  const clearAllData = async () => {
+    const confirmed = await confirm({
+      title: "Clear All Local Data",
+      message: "Are you sure you want to clear all data? This action cannot be undone!",
+      confirmText: "Clear",
+      danger: true,
+    });
+    if (!confirmed) return;
     
     const keys = [
       'cms_members',
@@ -204,7 +236,7 @@ export function Settings() {
     ];
     
     keys.forEach(key => localStorage.removeItem(key));
-    alert('All data has been cleared. Please refresh the page.');
+    toast.success('All local data has been cleared');
     window.location.reload();
   };
 
@@ -219,7 +251,7 @@ export function Settings() {
         {/* Church Information */}
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
               <SettingsIcon className="w-5 h-5 text-primary-600" />
             </div>
             <div>
@@ -430,13 +462,40 @@ export function Settings() {
                 placeholder="Enter your API key"
               />
             </div>
+
+            <div>
+              <label className="block text-sm text-neutral-700 mb-2">Sender ID</label>
+              <input
+                type="text"
+                value={settings.smsSenderId}
+                onChange={(e) => setSettings({ ...settings, smsSenderId: e.target.value })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="e.g. GraceChurch"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+              <div>
+                <p className="text-sm text-neutral-900">Enable SMS Sending</p>
+                <p className="text-xs text-neutral-600">Turn off to prevent SMS from being sent by the backend</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.smsEnabled}
+                  onChange={(e) => setSettings({ ...settings, smsEnabled: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
+              </label>
+            </div>
           </div>
         </div>
 
         {/* Department Management */}
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
               <Layers className="w-5 h-5 text-primary-600" />
             </div>
             <div>
@@ -485,7 +544,7 @@ export function Settings() {
                           setEditingDepartment(dept);
                           setEditValue(dept);
                         }}
-                        className="p-1.5 hover:bg-primary-100 text-primary-600 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-gray-100 text-primary-600 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -528,7 +587,7 @@ export function Settings() {
         {/* Save Button */}
         <div className="flex items-center gap-4">
             <button
-            onClick={() => handleSave().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to save settings'))}
+            onClick={() => handleSave().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to save settings'))}
             disabled={loadingSettings}
             className="flex items-center gap-2 px-6 py-3 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >

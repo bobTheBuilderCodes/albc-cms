@@ -4,7 +4,10 @@ import {
   deleteAttendance,
   getAttendance,
   getAttendanceByProgram,
+  getSundayAttendanceByYear,
+  getSundayAttendanceYears,
   markAttendance,
+  markSundayAttendance,
   updateAttendance,
 } from "./attendance.controllers";
 
@@ -15,6 +18,9 @@ router.use(protect);
 router.post("/", markAttendance);
 router.get("/", getAttendance);
 router.get("/program/:programId", getAttendanceByProgram);
+router.get("/sunday/years", getSundayAttendanceYears);
+router.get("/sunday/:year", getSundayAttendanceByYear);
+router.put("/sunday/:year", markSundayAttendance);
 router.put("/:id", updateAttendance);
 router.delete("/:id", deleteAttendance);
 
