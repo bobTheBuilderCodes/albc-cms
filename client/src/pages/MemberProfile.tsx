@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import type { Member, Attendance, Donation, PrayerRequest, ChurchProgram } from '../types';
+import { fetchAttendance, fetchFinance, fetchMember, fetchPrograms } from '../api/backend';
 import { 
   ArrowLeft, 
   Mail, 
@@ -43,23 +44,30 @@ export function MemberProfile() {
   });
 
   useEffect(() => {
-    if (memberId) {
-      const members = JSON.parse(localStorage.getItem('cms_members') || '[]');
-      const found = members.find((m: Member) => m.id === memberId);
-      setMember(found || null);
+    if (!memberId) return;
 
-      const allAttendance = JSON.parse(localStorage.getItem('cms_attendance') || '[]');
-      setAttendance(allAttendance.filter((a: Attendance) => a.memberId === memberId));
+    const load = async () => {
+      try {
+        const [found, allAttendance, allPrograms, finance] = await Promise.all([
+          fetchMember(memberId),
+          fetchAttendance(),
+          fetchPrograms(),
+          fetchFinance(),
+        ]);
 
-      const allDonations = JSON.parse(localStorage.getItem('cms_donations') || '[]');
-      setDonations(allDonations.filter((d: Donation) => d.memberId === memberId));
+        setMember(found || null);
+        setAttendance(allAttendance.filter((a) => a.memberId === memberId));
+        setDonations(finance.donations.filter((d) => d.memberId === memberId));
+        setPrograms(allPrograms);
+      } catch {
+        setMember(null);
+      }
 
       const allPrayers = JSON.parse(localStorage.getItem('cms_prayer_requests') || '[]');
       setPrayerRequests(allPrayers.filter((p: PrayerRequest) => p.memberId === memberId));
+    };
 
-      const allPrograms = JSON.parse(localStorage.getItem('cms_programs') || '[]');
-      setPrograms(allPrograms);
-    }
+    load();
   }, [memberId]);
 
   const handleAddPrayer = () => {

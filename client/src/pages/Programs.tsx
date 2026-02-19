@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { ChurchProgram } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeMockData, addAuditLog } from '../utils/mockData';
+import { addAuditLog } from '../utils/mockData';
+import { createProgram as apiCreateProgram, deleteProgram as apiDeleteProgram, fetchPrograms, updateProgram as apiUpdateProgram } from '../api/backend';
 import { 
   Calendar, 
   Plus, 
@@ -26,18 +27,16 @@ export function Programs() {
   const { user } = useAuth();
 
   useEffect(() => {
-    initializeMockData();
-    loadPrograms();
+    const load = async () => {
+      const data = await fetchPrograms();
+      setPrograms(data);
+    };
+    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load programs'));
   }, []);
 
   useEffect(() => {
     filterPrograms();
   }, [programs, searchQuery]);
-
-  const loadPrograms = () => {
-    const data = JSON.parse(localStorage.getItem('cms_programs') || '[]');
-    setPrograms(data);
-  };
 
   const filterPrograms = () => {
     let filtered = [...programs];
@@ -56,9 +55,9 @@ export function Programs() {
   const deleteProgram = (id: string) => {
     if (!confirm('Are you sure you want to delete this program?')) return;
     
-    const updated = programs.filter(p => p.id !== id);
-    setPrograms(updated);
-    localStorage.setItem('cms_programs', JSON.stringify(updated));
+    apiDeleteProgram(id)
+      .then(() => setPrograms((prev) => prev.filter((p) => p.id !== id)))
+      .catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to delete program'));
 
     addAuditLog({
       id: Date.now().toString(),
@@ -182,47 +181,43 @@ export function Programs() {
             setShowAddModal(false);
             setEditingProgram(null);
           }}
-          onSave={(program) => {
-            if (editingProgram) {
-              const updated = programs.map(p => p.id === program.id ? program : p);
-              setPrograms(updated);
-              localStorage.setItem('cms_programs', JSON.stringify(updated));
-              addAuditLog({
-                id: Date.now().toString(),
-                userId: user!.id,
-                userName: user!.name,
-                userRole: user!.role,
-                action: 'program_updated',
-                resourceType: 'program',
-                resourceId: program.id,
-                details: `Updated program: ${program.name}`,
-                timestamp: new Date().toISOString(),
-              });
-            } else {
-              const newProgram = { 
-                ...program, 
-                id: `program-${Date.now()}`, 
-                createdBy: user!.id,
-                createdAt: new Date().toISOString(), 
-                updatedAt: new Date().toISOString() 
-              };
-              const updated = [...programs, newProgram];
-              setPrograms(updated);
-              localStorage.setItem('cms_programs', JSON.stringify(updated));
-              addAuditLog({
-                id: Date.now().toString(),
-                userId: user!.id,
-                userName: user!.name,
-                userRole: user!.role,
-                action: 'program_created',
-                resourceType: 'program',
-                resourceId: newProgram.id,
-                details: `Created new program: ${newProgram.name}`,
-                timestamp: new Date().toISOString(),
-              });
+          onSave={async (program) => {
+            try {
+              if (editingProgram) {
+                const saved = await apiUpdateProgram(editingProgram.id, program);
+                setPrograms((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+                addAuditLog({
+                  id: Date.now().toString(),
+                  userId: user!.id,
+                  userName: user!.name,
+                  userRole: user!.role,
+                  action: 'program_updated',
+                  resourceType: 'program',
+                  resourceId: saved.id,
+                  details: `Updated program: ${saved.name}`,
+                  timestamp: new Date().toISOString(),
+                });
+              } else {
+                const saved = await apiCreateProgram(program);
+                setPrograms((prev) => [saved, ...prev]);
+                addAuditLog({
+                  id: Date.now().toString(),
+                  userId: user!.id,
+                  userName: user!.name,
+                  userRole: user!.role,
+                  action: 'program_created',
+                  resourceType: 'program',
+                  resourceId: saved.id,
+                  details: `Created new program: ${saved.name}`,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+
+              setShowAddModal(false);
+              setEditingProgram(null);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || 'Failed to save program');
             }
-            setShowAddModal(false);
-            setEditingProgram(null);
           }}
         />
       )}

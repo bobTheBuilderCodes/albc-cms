@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeMockData, addAuditLog } from '../utils/mockData';
+import { addAuditLog } from '../utils/mockData';
 import { Pagination } from '../components/Pagination';
+import { createUser as apiCreateUser, deleteUser as apiDeleteUser, fetchUsers, updateUser as apiUpdateUser } from '../api/backend';
 import { 
   UserCog, 
   Search, 
@@ -11,7 +12,6 @@ import {
   X,
   Shield,
   Mail,
-  Key,
   CheckCircle,
   XCircle,
   Eye,
@@ -35,7 +35,7 @@ export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'pastor' | 'admin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'pastor' | 'admin' | 'finance' | 'staff'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -44,16 +44,15 @@ export function UserManagement() {
   const { user } = useAuth();
 
   useEffect(() => {
-    initializeMockData();
-    loadUsers();
+    loadUsers().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load users'));
   }, []);
 
   useEffect(() => {
     filterUsers();
   }, [users, searchQuery, roleFilter, statusFilter]);
 
-  const loadUsers = () => {
-    const data = JSON.parse(localStorage.getItem('cms_users') || '[]');
+  const loadUsers = async () => {
+    const data = await fetchUsers();
     setUsers(data);
   };
 
@@ -79,17 +78,17 @@ export function UserManagement() {
     setFilteredUsers(filtered);
   };
 
-  const deleteUser = (id: string) => {
+  const deleteUser = async (id: string) => {
     if (id === user?.id) {
       alert('You cannot delete your own account!');
       return;
     }
 
     if (!confirm('Are you sure you want to delete this user?')) return;
-    
-    const updated = users.filter(u => u.id !== id);
+
+    await apiDeleteUser(id);
+    const updated = users.filter((u) => u.id !== id);
     setUsers(updated);
-    localStorage.setItem('cms_users', JSON.stringify(updated));
 
     addAuditLog({
       id: Date.now().toString(),
@@ -104,30 +103,8 @@ export function UserManagement() {
     });
   };
 
-  const toggleUserStatus = (userId: string) => {
-    if (userId === user?.id) {
-      alert('You cannot deactivate your own account!');
-      return;
-    }
-
-    const updated = users.map(u => 
-      u.id === userId ? { ...u, isActive: !u.isActive, updatedAt: new Date().toISOString() } : u
-    );
-    setUsers(updated);
-    localStorage.setItem('cms_users', JSON.stringify(updated));
-
-    const targetUser = updated.find(u => u.id === userId);
-    addAuditLog({
-      id: Date.now().toString(),
-      userId: user!.id,
-      userName: user!.name,
-      userRole: user!.role,
-      action: 'member_updated',
-      resourceType: 'user',
-      resourceId: userId,
-      details: `${targetUser?.isActive ? 'Activated' : 'Deactivated'} user: ${targetUser?.name}`,
-      timestamp: new Date().toISOString(),
-    });
+  const toggleUserStatus = () => {
+    alert('User activation/deactivation is not supported by the backend yet.');
   };
 
   const indexOfLastUser = currentPage * itemsPerPage;
@@ -197,6 +174,8 @@ export function UserManagement() {
             <option value="all">All Roles</option>
             <option value="pastor">Pastor</option>
             <option value="admin">Admin</option>
+            <option value="finance">Finance</option>
+            <option value="staff">Staff</option>
           </select>
 
           <select
@@ -274,7 +253,7 @@ export function UserManagement() {
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => toggleUserStatus(usr.id)}
+                      onClick={() => toggleUserStatus()}
                       disabled={usr.id === user?.id}
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${
                         usr.isActive
@@ -295,7 +274,7 @@ export function UserManagement() {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteUser(usr.id)}
+                      onClick={() => deleteUser(usr.id).catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to delete user'))}
                         disabled={usr.id === user?.id}
                         className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete"
@@ -325,11 +304,18 @@ export function UserManagement() {
             setShowAddModal(false);
             setEditingUser(null);
           }}
-          onSave={(newUser) => {
+          onSave={async (newUser) => {
             if (editingUser) {
-              const updated = users.map(u => u.id === newUser.id ? newUser : u);
+              const saved = await apiUpdateUser(newUser.id, {
+                name: newUser.name,
+                email: newUser.email,
+                password: newUser.password || undefined,
+                role: newUser.role,
+                modules: newUser.modules,
+                isActive: newUser.isActive,
+              });
+              const updated = users.map((u) => (u.id === saved.id ? saved : u));
               setUsers(updated);
-              localStorage.setItem('cms_users', JSON.stringify(updated));
               addAuditLog({
                 id: Date.now().toString(),
                 userId: user!.id,
@@ -337,20 +323,21 @@ export function UserManagement() {
                 userRole: user!.role,
                 action: 'member_updated',
                 resourceType: 'user',
-                resourceId: newUser.id,
-                details: `Updated user: ${newUser.name}`,
+                resourceId: saved.id,
+                details: `Updated user: ${saved.name}`,
                 timestamp: new Date().toISOString(),
               });
             } else {
-              const userToAdd = { 
-                ...newUser, 
-                id: `user-${Date.now()}`, 
-                createdAt: new Date().toISOString(), 
-                updatedAt: new Date().toISOString() 
-              };
+              const userToAdd = await apiCreateUser({
+                name: newUser.name,
+                email: newUser.email,
+                password: newUser.password || '',
+                role: newUser.role,
+                modules: newUser.modules,
+                isActive: newUser.isActive,
+              });
               const updated = [...users, userToAdd];
               setUsers(updated);
-              localStorage.setItem('cms_users', JSON.stringify(updated));
               addAuditLog({
                 id: Date.now().toString(),
                 userId: user!.id,
@@ -372,7 +359,7 @@ export function UserManagement() {
   );
 }
 
-function UserModal({ user, onClose, onSave }: { user: User | null; onClose: () => void; onSave: (user: User) => void }) {
+function UserModal({ user, onClose, onSave }: { user: User | null; onClose: () => void; onSave: (user: User) => Promise<void> }) {
   const [formData, setFormData] = useState<Partial<User>>(
     user || {
       name: '',
@@ -384,10 +371,16 @@ function UserModal({ user, onClose, onSave }: { user: User | null; onClose: () =
     }
   );
   const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...formData, updatedAt: new Date().toISOString() } as User);
+    try {
+      setSaving(true);
+      await onSave({ ...formData, updatedAt: new Date().toISOString() } as User);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleModule = (module: ModulePermission) => {
@@ -472,6 +465,8 @@ function UserModal({ user, onClose, onSave }: { user: User | null; onClose: () =
               >
                 <option value="admin">Admin</option>
                 <option value="pastor">Pastor</option>
+                <option value="finance">Finance</option>
+                <option value="staff">Staff</option>
               </select>
             </div>
 
@@ -537,10 +532,10 @@ function UserModal({ user, onClose, onSave }: { user: User | null; onClose: () =
           <div className="flex items-center gap-3 pt-4 border-t border-neutral-200">
             <button
               type="submit"
-              disabled={!formData.modules || formData.modules.length === 0}
+              disabled={saving || !formData.modules || formData.modules.length === 0}
               className="flex-1 bg-blue-900 from-primary-600 to-accent-600 text-white py-2.5 rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {user ? 'Update User' : 'Add User'}
+              {saving ? 'Saving...' : user ? 'Update User' : 'Add User'}
             </button>
             <button
               type="button"

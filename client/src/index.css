@@ -1,3 +1,28 @@
 
 @import "tailwindcss";
 
+@layer base {
+  body {
+    background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 45%, #ecfeff 100%);
+  }
+}
+
+@layer components {
+  .bg-white.rounded-xl.shadow-sm.border {
+    border-color: rgb(186 230 253 / 0.9);
+    box-shadow:
+      0 10px 25px -16px rgba(14, 116, 144, 0.45),
+      0 2px 8px -4px rgba(79, 70, 229, 0.25);
+    background-image: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  }
+
+  .bg-white.rounded-2xl.shadow-xl {
+    box-shadow:
+      0 20px 50px -28px rgba(30, 64, 175, 0.45),
+      0 12px 20px -20px rgba(14, 116, 144, 0.5);
+  }
+
+  .bg-blue-900 {
+    background-image: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 52%, #0891b2 100%);
+  }
+}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Attendance as AttendanceType, Member, ChurchProgram } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeMockData, addAuditLog } from '../utils/mockData';
+import { addAuditLog } from '../utils/mockData';
+import { fetchAttendance, fetchMembers, fetchPrograms, markAttendance as apiMarkAttendance } from '../api/backend';
 import { 
   UserCheck, 
   Calendar, 
@@ -10,7 +11,6 @@ import {
   Download,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   TrendingUp
 } from 'lucide-react';
 
@@ -24,15 +24,14 @@ export function Attendance() {
   const { user } = useAuth();
 
   useEffect(() => {
-    initializeMockData();
-    loadData();
+    const load = async () => {
+      const [att, mem, pro] = await Promise.all([fetchAttendance(), fetchMembers(), fetchPrograms()]);
+      setAttendance(att);
+      setMembers(mem);
+      setPrograms(pro);
+    };
+    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load attendance'));
   }, []);
-
-  const loadData = () => {
-    setAttendance(JSON.parse(localStorage.getItem('cms_attendance') || '[]'));
-    setMembers(JSON.parse(localStorage.getItem('cms_members') || '[]'));
-    setPrograms(JSON.parse(localStorage.getItem('cms_programs') || '[]'));
-  };
 
   const programAttendance = selectedProgram
     ? attendance.filter(a => a.programId === selectedProgram)
@@ -48,14 +47,13 @@ export function Attendance() {
 
   const exportAttendance = () => {
     const program = programs.find(p => p.id === selectedProgram);
-    const headers = ['Member Name', 'Status', 'Date', 'Notes'];
+    const headers = ['Member Name', 'Status', 'Date'];
     const rows = programAttendance.map(a => {
       const member = members.find(m => m.id === a.memberId);
       return [
         member?.fullName || 'Unknown',
         a.status,
         new Date(a.date).toLocaleDateString(),
-        a.notes || '',
       ];
     });
 
@@ -183,15 +181,12 @@ export function Attendance() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs ${
-                            att.status === 'present' 
+                            att.status === 'present'
                               ? 'bg-success-50 text-success-700'
-                              : att.status === 'excused'
-                              ? 'bg-warning-50 text-warning-700'
                               : 'bg-danger-50 text-danger-700'
                           }`}>
                             {att.status === 'present' && <CheckCircle2 className="w-3 h-3" />}
                             {att.status === 'absent' && <XCircle className="w-3 h-3" />}
-                            {att.status === 'excused' && <AlertCircle className="w-3 h-3" />}
                             {att.status}
                           </span>
                         </td>
@@ -224,12 +219,21 @@ export function Attendance() {
           programs={programs}
           members={members}
           onClose={() => setShowMarkModal(false)}
-          onSave={(newAttendance) => {
-            const updated = [...attendance, ...newAttendance];
-            setAttendance(updated);
-            localStorage.setItem('cms_attendance', JSON.stringify(updated));
-            
-            newAttendance.forEach(att => {
+          onSave={async (newAttendance) => {
+            try {
+              await Promise.all(
+                newAttendance.map((att) =>
+                  apiMarkAttendance({
+                    programId: att.programId,
+                    memberId: att.memberId,
+                    status: att.status === 'present' ? 'present' : 'absent',
+                  })
+                )
+              );
+
+              const refreshed = await fetchAttendance();
+              setAttendance(refreshed);
+
               addAuditLog({
                 id: Date.now().toString() + Math.random(),
                 userId: user!.id,
@@ -237,13 +241,14 @@ export function Attendance() {
                 userRole: user!.role,
                 action: 'attendance_recorded',
                 resourceType: 'attendance',
-                resourceId: att.id,
-                details: `Recorded attendance for program ${att.programId}`,
+                details: `Recorded attendance for program ${selectedProgram}`,
                 timestamp: new Date().toISOString(),
               });
-            });
 
-            setShowMarkModal(false);
+              setShowMarkModal(false);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || 'Failed to record attendance');
+            }
           }}
         />
       )}
@@ -263,7 +268,7 @@ function MarkAttendanceModal({
   onSave: (attendance: AttendanceType[]) => void;
 }) {
   const [selectedProgram, setSelectedProgram] = useState('');
-  const [attendanceData, setAttendanceData] = useState<Map<string, 'present' | 'absent' | 'excused'>>(new Map());
+  const [attendanceData, setAttendanceData] = useState<Map<string, 'present' | 'absent'>>(new Map());
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuth();
 
@@ -290,14 +295,14 @@ function MarkAttendanceModal({
 
   const toggleStatus = (memberId: string) => {
     const current = attendanceData.get(memberId) || 'absent';
-    const next = current === 'absent' ? 'present' : current === 'present' ? 'excused' : 'absent';
+    const next = current === 'absent' ? 'present' : 'absent';
     const newData = new Map(attendanceData);
     newData.set(memberId, next);
     setAttendanceData(newData);
   };
 
   const markAllPresent = () => {
-    const newData = new Map<string, 'present' | 'absent' | 'excused'>();
+    const newData = new Map<string, 'present' | 'absent'>();
     filteredMembers.forEach(m => newData.set(m.id, 'present'));
     setAttendanceData(newData);
   };
@@ -370,15 +375,12 @@ function MarkAttendanceModal({
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs ${
-                        status === 'present' 
+                        status === 'present'
                           ? 'bg-success-50 text-success-700'
-                          : status === 'excused'
-                          ? 'bg-warning-50 text-warning-700'
                           : 'bg-danger-50 text-danger-700'
                       }`}>
                         {status === 'present' && <CheckCircle2 className="w-3 h-3" />}
                         {status === 'absent' && <XCircle className="w-3 h-3" />}
-                        {status === 'excused' && <AlertCircle className="w-3 h-3" />}
                         {status}
                       </span>
                     </div>

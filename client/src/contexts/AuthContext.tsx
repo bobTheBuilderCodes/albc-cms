@@ -1,133 +1,136 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User, UserRole } from '../types';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import API from "../api/axios";
+import type { User } from "../types";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
   isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
+const AUTH_USER_STORAGE_KEY = "auth_user";
 
-// Mock users for demo
-const MOCK_USERS: { email: string; password: string; user: User }[] = [
-  {
-    email: 'pastor@church.com',
-    password: 'pastor123',
-    user: {
-      id: '1',
-      email: 'pastor@church.com',
-      name: 'Rev. John Mensah',
-      role: 'pastor',
-    },
-  },
-  {
-    email: 'admin@church.com',
-    password: 'admin123',
-    user: {
-      id: '2',
-      email: 'admin@church.com',
-      name: 'Grace Owusu',
-      role: 'admin',
-    },
-  },
-];
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const mapRole = (role?: string): User["role"] => {
+    const lower = String(role || "").toLowerCase();
+    if (lower === "admin") return "admin";
+    if (lower === "finance") return "finance";
+    if (lower === "staff") return "staff";
+    return "pastor";
+  };
+
+  const modulesByRole: Record<User["role"], User["modules"]> = {
+    admin: ["dashboard", "members", "programs", "attendance", "messaging", "finance", "audit", "settings", "users"],
+    pastor: ["dashboard", "members", "programs", "attendance", "messaging", "audit"],
+    finance: ["dashboard", "finance", "audit", "members"],
+    staff: ["dashboard", "members", "programs", "attendance", "messaging"],
+  };
+
+  const hydrateFromToken = (token: string): User | null => {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const role = mapRole(payload.role);
+      const now = new Date().toISOString();
+
+      return {
+        id: payload.id,
+        name: payload.name || "User",
+        email: payload.email || "",
+        role,
+        modules: modulesByRole[role],
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const normalizeUser = (raw: any): User => {
+    const role = mapRole(raw?.role);
+    const now = new Date().toISOString();
+
+    return {
+      id: String(raw?.id || ""),
+      name: String(raw?.name || "User"),
+      email: String(raw?.email || ""),
+      role,
+      modules: Array.isArray(raw?.modules) && raw.modules.length > 0 ? raw.modules : modulesByRole[role],
+      isActive: raw?.isActive === undefined ? true : Boolean(raw.isActive),
+      createdAt: raw?.createdAt || now,
+      updatedAt: raw?.updatedAt || now,
+    };
+  };
+
   useEffect(() => {
-    // Check for stored auth
-    const storedUser = localStorage.getItem('cms_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('cms_user');
-      }
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    const restored = storedUser ? normalizeUser(JSON.parse(storedUser)) : hydrateFromToken(token);
+    if (restored) {
+      setUser(restored);
+    } else {
+      localStorage.removeItem("token");
+      localStorage.removeItem(AUTH_USER_STORAGE_KEY);
     }
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+  const login = async (email: string, password: string) => {
+    const res = await API.post("/auth/login", { email, password });
 
-    const matchedUser = MOCK_USERS.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-
-    if (matchedUser) {
-      setUser(matchedUser.user);
-      localStorage.setItem('cms_user', JSON.stringify(matchedUser.user));
-      
-      // Log audit trail
-      const auditLog = {
-        id: Date.now().toString(),
-        userId: matchedUser.user.id,
-        userName: matchedUser.user.name,
-        userRole: matchedUser.user.role,
-        action: 'login',
-        resourceType: 'auth',
-        details: `User logged in: ${matchedUser.user.email}`,
-        timestamp: new Date().toISOString(),
-      };
-      
-      const logs = JSON.parse(localStorage.getItem('cms_audit_logs') || '[]');
-      logs.push(auditLog);
-      localStorage.setItem('cms_audit_logs', JSON.stringify(logs));
-
-      return { success: true };
+    const token = res.data?.data?.token;
+    const apiUser = res.data?.data?.user;
+    if (!token) {
+      throw new Error("Token missing from login response");
+    }
+    if (!apiUser) {
+      throw new Error("User missing from login response");
     }
 
-    return { success: false, error: 'Invalid email or password' };
+    localStorage.setItem("token", token);
+    const loggedInUser = normalizeUser(apiUser);
+    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(loggedInUser));
+    setUser(loggedInUser);
   };
 
   const logout = () => {
-    if (user) {
-      // Log audit trail
-      const auditLog = {
-        id: Date.now().toString(),
-        userId: user.id,
-        userName: user.name,
-        userRole: user.role,
-        action: 'logout',
-        resourceType: 'auth',
-        details: `User logged out: ${user.email}`,
-        timestamp: new Date().toISOString(),
-      };
-      
-      const logs = JSON.parse(localStorage.getItem('cms_audit_logs') || '[]');
-      logs.push(auditLog);
-      localStorage.setItem('cms_audit_logs', JSON.stringify(logs));
-    }
-
+    localStorage.removeItem("token");
+    localStorage.removeItem(AUTH_USER_STORAGE_KEY);
     setUser(null);
-    localStorage.removeItem('cms_user');
   };
 
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: Boolean(user),
+      isLoading,
+      login,
+      logout,
+    }),
+    [user, isLoading]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        isLoading,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
-}
+};

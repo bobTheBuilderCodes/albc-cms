@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { addAuditLog } from '../utils/mockData';
+import { fetchSettings, upsertSettings } from '../api/backend';
 import { 
   Settings as SettingsIcon, 
   Bell, 
@@ -19,6 +20,7 @@ import {
 
 export function Settings() {
   const { user } = useAuth();
+  const [settingsId, setSettingsId] = useState<string | undefined>(undefined);
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('cms_settings');
     return saved ? JSON.parse(saved) : {
@@ -30,11 +32,13 @@ export function Settings() {
       enableProgramReminders: true,
       enableMemberAddedNotifications: true,
       enableDonationNotifications: true,
+      enableUserAddedNotifications: true,
       reminderDaysBefore: 1,
       smsProvider: 'arkesel',
       smsApiKey: 'YOUR_API_KEY_HERE',
     };
   });
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
   const [departments, setDepartments] = useState<string[]>(() => {
     const stored = localStorage.getItem('cms_departments');
@@ -46,8 +50,62 @@ export function Settings() {
   const [editValue, setEditValue] = useState('');
   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingSettings(true);
+        const backendSettings = await fetchSettings();
+        if (!backendSettings) return;
+
+        setSettingsId(backendSettings.id);
+        setSettings((prev: any) => ({
+          ...prev,
+          churchName: backendSettings.churchName || prev.churchName,
+          email: backendSettings.email || prev.email,
+          phone: backendSettings.phone || prev.phone,
+          address: backendSettings.address || prev.address,
+          enableBirthdayNotifications:
+            backendSettings.enableBirthdayNotifications ?? prev.enableBirthdayNotifications,
+          enableProgramReminders:
+            backendSettings.enableProgramReminders ?? prev.enableProgramReminders,
+          enableMemberAddedNotifications:
+            backendSettings.enableMemberAddedNotifications ?? prev.enableMemberAddedNotifications,
+          enableDonationNotifications:
+            backendSettings.enableDonationNotifications ?? prev.enableDonationNotifications,
+          enableUserAddedNotifications:
+            backendSettings.enableUserAddedNotifications ?? prev.enableUserAddedNotifications,
+        }));
+      } catch (e: any) {
+        alert(e?.response?.data?.message || e?.message || 'Failed to load settings');
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    await upsertSettings({
+      id: settingsId,
+      churchName: settings.churchName,
+      email: settings.email,
+      phone: settings.phone,
+      address: settings.address,
+      smsEnabled: Boolean(settings.enableBirthdayNotifications || settings.enableProgramReminders),
+      enableBirthdayNotifications: settings.enableBirthdayNotifications,
+      enableProgramReminders: settings.enableProgramReminders,
+      enableMemberAddedNotifications: settings.enableMemberAddedNotifications,
+      enableDonationNotifications: settings.enableDonationNotifications,
+      enableUserAddedNotifications: settings.enableUserAddedNotifications,
+    }).then((savedSettings) => setSettingsId(savedSettings.id));
+
     localStorage.setItem('cms_settings', JSON.stringify(settings));
+    window.dispatchEvent(
+      new CustomEvent('church-settings-updated', {
+        detail: { churchName: settings.churchName },
+      })
+    );
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
 
@@ -290,6 +348,22 @@ export function Settings() {
               </label>
             </div>
 
+            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+              <div>
+                <p className="text-sm text-neutral-900">User Account Notifications</p>
+                <p className="text-xs text-neutral-600">Send credentials email when a user account is created</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.enableUserAddedNotifications}
+                  onChange={(e) => setSettings({ ...settings, enableUserAddedNotifications: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
+              </label>
+            </div>
+
             {settings.enableProgramReminders && (
               <div>
                 <label className="block text-sm text-neutral-700 mb-2">Send reminder (days before)</label>
@@ -453,12 +527,13 @@ export function Settings() {
 
         {/* Save Button */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={handleSave}
+            <button
+            onClick={() => handleSave().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to save settings'))}
+            disabled={loadingSettings}
             className="flex items-center gap-2 px-6 py-3 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Save className="w-5 h-5" />
-            Save Settings
+            {loadingSettings ? 'Saving...' : 'Save Settings'}
           </button>
           {saved && (
             <span className="text-sm text-success-600 flex items-center gap-2">

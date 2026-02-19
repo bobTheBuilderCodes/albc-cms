@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Donation, Member } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeMockData, addAuditLog } from '../utils/mockData';
+import { addAuditLog } from '../utils/mockData';
+import { createFinanceTransaction, fetchFinance, fetchMembers } from '../api/backend';
 import { downloadReceipt, DonationReceipt } from '../components/DonationReceipt';
 import { 
   DollarSign, 
@@ -27,14 +28,13 @@ export function Donations() {
   const { user } = useAuth();
 
   useEffect(() => {
-    initializeMockData();
-    loadData();
+    const load = async () => {
+      const [finance, mem] = await Promise.all([fetchFinance(), fetchMembers()]);
+      setDonations(finance.donations);
+      setMembers(mem);
+    };
+    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load donations'));
   }, []);
-
-  const loadData = () => {
-    setDonations(JSON.parse(localStorage.getItem('cms_donations') || '[]'));
-    setMembers(JSON.parse(localStorage.getItem('cms_members') || '[]'));
-  };
 
   const filteredDonations = donations.filter(d => {
     if (typeFilter !== 'all' && d.type !== typeFilter) return false;
@@ -230,30 +230,41 @@ export function Donations() {
         <DonationModal
           members={members}
           onClose={() => setShowAddModal(false)}
-          onSave={(donation) => {
-            const newDonation = {
-              ...donation,
-              id: `donation-${Date.now()}`,
-              recordedBy: user!.name,
-              createdAt: new Date().toISOString(),
-            };
-            const updated = [...donations, newDonation];
-            setDonations(updated);
-            localStorage.setItem('cms_donations', JSON.stringify(updated));
+          onSave={async (donation) => {
+            try {
+              const type =
+                donation.type === 'tithe'
+                  ? 'Tithe'
+                  : donation.type === 'offering'
+                  ? 'Offering'
+                  : 'Donation';
 
-            addAuditLog({
-              id: Date.now().toString(),
-              userId: user!.id,
-              userName: user!.name,
-              userRole: user!.role,
-              action: 'donation_recorded',
-              resourceType: 'donation',
-              resourceId: newDonation.id,
-              details: `Recorded donation of GH₵${donation.amount} from ${donation.memberName}`,
-              timestamp: new Date().toISOString(),
-            });
+              await createFinanceTransaction({
+                type,
+                amount: Number(donation.amount || 0),
+                memberId: donation.memberId,
+                note: donation.description || undefined,
+                date: donation.date,
+              });
 
-            setShowAddModal(false);
+              const finance = await fetchFinance();
+              setDonations(finance.donations);
+
+              addAuditLog({
+                id: Date.now().toString(),
+                userId: user!.id,
+                userName: user!.name,
+                userRole: user!.role,
+                action: 'donation_recorded',
+                resourceType: 'finance',
+                details: `Recorded ${type} of GH₵${donation.amount} from ${donation.memberName}`,
+                timestamp: new Date().toISOString(),
+              });
+
+              setShowAddModal(false);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || 'Failed to record donation');
+            }
           }}
         />
       )}

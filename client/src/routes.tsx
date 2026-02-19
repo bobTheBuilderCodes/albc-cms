@@ -11,6 +11,7 @@ import { Settings } from "./pages/Settings";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import { UserManagement } from "./pages/UserManagement";
+import { ModuleGuard } from "./components/ModuleGuard";
 
 export const router = createBrowserRouter([
   {
@@ -23,43 +24,83 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: (
+          <ModuleGuard module="dashboard">
+            <Dashboard />
+          </ModuleGuard>
+        ),
       },
       {
         path: "members",
-        element: <Members />,
+        element: (
+          <ModuleGuard module="members">
+            <Members />
+          </ModuleGuard>
+        ),
       },
       {
         path: "members/:memberId",
-        element: <MemberProfile />,
+        element: (
+          <ModuleGuard module="members">
+            <MemberProfile />
+          </ModuleGuard>
+        ),
       },
       {
         path: "programs",
-        element: <Programs />,
+        element: (
+          <ModuleGuard module="programs">
+            <Programs />
+          </ModuleGuard>
+        ),
       },
       {
         path: "attendance",
-        element: <Attendance />,
+        element: (
+          <ModuleGuard module="attendance">
+            <Attendance />
+          </ModuleGuard>
+        ),
       },
       {
         path: "messaging",
-        element: <Messaging />,
+        element: (
+          <ModuleGuard module="messaging">
+            <Messaging />
+          </ModuleGuard>
+        ),
       },
       {
         path: "finance",
-        element: <Finance />,
+        element: (
+          <ModuleGuard module="finance">
+            <Finance />
+          </ModuleGuard>
+        ),
       },
       {
         path: "audit",
-        element: <AuditLogs />,
+        element: (
+          <ModuleGuard module="audit">
+            <AuditLogs />
+          </ModuleGuard>
+        ),
       },
       {
         path: "user-management",
-        element: <UserManagement />,
+        element: (
+          <ModuleGuard module="users">
+            <UserManagement />
+          </ModuleGuard>
+        ),
       },
       {
         path: "settings",
-        element: <Settings />,
+        element: (
+          <ModuleGuard module="settings">
+            <Settings />
+          </ModuleGuard>
+        ),
       },
       {
         path: "*",

@@ -32,11 +32,11 @@ export function Root() {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-neutral-50">
+      <div className="flex h-screen bg-[radial-gradient(circle_at_top_right,_#dbeafe_0%,_#f8fafc_35%,_#e0f2fe_100%)]">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-y-auto bg-neutral-50">
+          <main className="flex-1 overflow-y-auto bg-transparent">
             <Outlet />
           </main>
         </div>

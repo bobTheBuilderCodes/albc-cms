@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { SMSLog, SMSTemplate, Member, ChurchProgram } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeMockData, addAuditLog } from '../utils/mockData';
+import { addAuditLog } from '../utils/mockData';
+import { fetchMembers, fetchPrograms } from '../api/backend';
 import { 
   MessageSquare, 
   Send, 
@@ -29,24 +30,25 @@ export function Messaging() {
   const { user } = useAuth();
 
   useEffect(() => {
-    initializeMockData();
-    loadData();
-    // Simulate auto birthday check
-    checkAndSendBirthdayMessages();
+    loadData().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load messaging data'));
   }, []);
 
-  const loadData = () => {
+  const loadData = async () => {
+    const [memberData, programData] = await Promise.all([fetchMembers(), fetchPrograms()]);
+    setMembers(memberData);
+    setPrograms(programData);
+
     setSmsLogs(JSON.parse(localStorage.getItem('cms_sms_logs') || '[]'));
     setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
-    setMembers(JSON.parse(localStorage.getItem('cms_members') || '[]'));
-    setPrograms(JSON.parse(localStorage.getItem('cms_programs') || '[]'));
+
+    // Simulate auto birthday check from live member data
+    checkAndSendBirthdayMessages(memberData);
   };
 
-  const checkAndSendBirthdayMessages = () => {
+  const checkAndSendBirthdayMessages = (membersData: Member[]) => {
     const today = new Date();
     const todayStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
-    const membersData = JSON.parse(localStorage.getItem('cms_members') || '[]');
+
     const birthdayMembers = membersData.filter((m: Member) => {
       const dob = new Date(m.dateOfBirth);
       const memberBirthday = `${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
@@ -354,7 +356,7 @@ function TemplatesTab({
         <h3 className="text-neutral-800">SMS Templates</h3>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-primary-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Template

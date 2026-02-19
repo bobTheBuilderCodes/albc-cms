@@ -2,14 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import type { Member } from "../types";
 import { useAuth } from "../contexts/AuthContext";
-import { initializeMockData, addAuditLog } from "../utils/mockData";
+import { addAuditLog } from "../utils/mockData";
 import {
-  Users,
   Search,
   Plus,
   Edit,
   Trash2,
-  Filter,
   Download,
   UserCircle,
   Mail,
@@ -21,6 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Pagination } from "../components/Pagination";
+import { createMember as apiCreateMember, deleteMember as apiDeleteMember, fetchMembers, updateMember as apiUpdateMember } from "../api/backend";
 
 export function Members() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -39,18 +38,21 @@ export function Members() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    initializeMockData();
-    loadMembers();
+    const load = async () => {
+      const data = await fetchMembers();
+      setMembers(data);
+    };
+
+    load().catch((e) => {
+      alert(e?.response?.data?.message || e?.message || "Failed to load members");
+    });
   }, []);
 
   useEffect(() => {
     filterMembers();
   }, [members, searchQuery, statusFilter, departmentFilter]);
 
-  const loadMembers = () => {
-    const data = JSON.parse(localStorage.getItem("cms_members") || "[]");
-    setMembers(data);
-  };
+ 
 
   const filterMembers = () => {
     let filtered = [...members];
@@ -80,9 +82,9 @@ export function Members() {
   const deleteMember = (id: string) => {
     if (!confirm("Are you sure you want to delete this member?")) return;
 
-    const updated = members.filter((m) => m.id !== id);
-    setMembers(updated);
-    localStorage.setItem("cms_members", JSON.stringify(updated));
+    apiDeleteMember(id)
+      .then(() => setMembers((prev) => prev.filter((m) => m.id !== id)))
+      .catch((e) => alert(e?.response?.data?.message || e?.message || "Failed to delete member"));
 
     addAuditLog({
       id: Date.now().toString(),
@@ -331,48 +333,43 @@ export function Members() {
             setShowAddModal(false);
             setEditingMember(null);
           }}
-          onSave={(member) => {
-            if (editingMember) {
-              const updated = members.map((m) =>
-                m.id === member.id ? member : m
-              );
-              setMembers(updated);
-              localStorage.setItem("cms_members", JSON.stringify(updated));
-              addAuditLog({
-                id: Date.now().toString(),
-                userId: user!.id,
-                userName: user!.name,
-                userRole: user!.role,
-                action: "member_updated",
-                resourceType: "member",
-                resourceId: member.id,
-                details: `Updated member: ${member.fullName}`,
-                timestamp: new Date().toISOString(),
-              });
-            } else {
-              const newMember = {
-                ...member,
-                id: `member-${Date.now()}`,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
-              const updated = [...members, newMember];
-              setMembers(updated);
-              localStorage.setItem("cms_members", JSON.stringify(updated));
-              addAuditLog({
-                id: Date.now().toString(),
-                userId: user!.id,
-                userName: user!.name,
-                userRole: user!.role,
-                action: "member_created",
-                resourceType: "member",
-                resourceId: newMember.id,
-                details: `Created new member: ${newMember.fullName}`,
-                timestamp: new Date().toISOString(),
-              });
+          onSave={async (member) => {
+            try {
+              if (editingMember) {
+                const saved = await apiUpdateMember(editingMember.id, member);
+                setMembers((prev) => prev.map((m) => (m.id === saved.id ? saved : m)));
+                addAuditLog({
+                  id: Date.now().toString(),
+                  userId: user!.id,
+                  userName: user!.name,
+                  userRole: user!.role,
+                  action: "member_updated",
+                  resourceType: "member",
+                  resourceId: saved.id,
+                  details: `Updated member: ${saved.fullName}`,
+                  timestamp: new Date().toISOString(),
+                });
+              } else {
+                const saved = await apiCreateMember(member);
+                setMembers((prev) => [saved, ...prev]);
+                addAuditLog({
+                  id: Date.now().toString(),
+                  userId: user!.id,
+                  userName: user!.name,
+                  userRole: user!.role,
+                  action: "member_created",
+                  resourceType: "member",
+                  resourceId: saved.id,
+                  details: `Created new member: ${saved.fullName}`,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+
+              setShowAddModal(false);
+              setEditingMember(null);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || "Failed to save member");
             }
-            setShowAddModal(false);
-            setEditingMember(null);
           }}
         />
       )}
@@ -380,22 +377,25 @@ export function Members() {
       {showBulkUploadModal && (
         <BulkUploadModal
           onClose={() => setShowBulkUploadModal(false)}
-          onImport={(newMembers) => {
-            const updated = [...members, ...newMembers];
-            setMembers(updated);
-            localStorage.setItem("cms_members", JSON.stringify(updated));
-            setShowBulkUploadModal(false);
+          onImport={async (newMembers) => {
+            try {
+              const saved = await Promise.all(newMembers.map((m) => apiCreateMember(m)));
+              setMembers((prev) => [...saved, ...prev]);
+              setShowBulkUploadModal(false);
 
-            addAuditLog({
-              id: Date.now().toString(),
-              userId: user!.id,
-              userName: user!.name,
-              userRole: user!.role,
-              action: "member_created",
-              resourceType: "member",
-              details: `Bulk imported ${newMembers.length} members`,
-              timestamp: new Date().toISOString(),
-            });
+              addAuditLog({
+                id: Date.now().toString(),
+                userId: user!.id,
+                userName: user!.name,
+                userRole: user!.role,
+                action: "member_created",
+                resourceType: "member",
+                details: `Bulk imported ${saved.length} members`,
+                timestamp: new Date().toISOString(),
+              });
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || "Bulk import failed");
+            }
           }}
         />
       )}
@@ -663,7 +663,6 @@ function BulkUploadModal({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<Partial<Member>[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -838,7 +837,7 @@ function BulkUploadModal({
           {/* Instructions */}
           <div className="bg-info-50 border border-info-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <FileSpreadsheet className="w-5 h-5 text-info-600 flex-shrink-0 mt-0.5" />
+              <FileSpreadsheet className="w-5 h-5 text-info-600 shrink-0 mt-0.5" />
               <div className="text-sm text-info-800">
                 <p className="font-semibold mb-2">How to upload members:</p>
                 <ol className="list-decimal list-inside space-y-1">
@@ -885,7 +884,7 @@ function BulkUploadModal({
           {error && (
             <div className="bg-danger-50 border border-danger-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-danger-600 flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-danger-600 shrink-0 mt-0.5" />
                 <div className="text-sm text-danger-800">
                   <p className="font-semibold mb-1">Error</p>
                   <p>{error}</p>

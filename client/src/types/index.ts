@@ -1,4 +1,4 @@
-export type UserRole = 'pastor' | 'admin';
+export type UserRole = 'pastor' | 'admin' | 'finance' | 'staff';
 
 export type ModulePermission = 
   | 'dashboard'

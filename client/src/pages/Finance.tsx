@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Donation, Expenditure, Member } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeMockData, addAuditLog } from '../utils/mockData';
+import { addAuditLog } from '../utils/mockData';
+import { createFinanceTransaction, fetchFinance, fetchMembers } from '../api/backend';
 import { downloadReceipt, DonationReceipt } from '../components/DonationReceipt';
 import { 
   DollarSign, 
@@ -36,15 +37,14 @@ export function Finance() {
   const { user } = useAuth();
 
   useEffect(() => {
-    initializeMockData();
-    loadData();
+    const load = async () => {
+      const [finance, mem] = await Promise.all([fetchFinance(), fetchMembers()]);
+      setDonations(finance.donations);
+      setExpenditures(finance.expenditures);
+      setMembers(mem);
+    };
+    load().catch((e) => alert(e?.response?.data?.message || e?.message || 'Failed to load finance data'));
   }, []);
-
-  const loadData = () => {
-    setDonations(JSON.parse(localStorage.getItem('cms_donations') || '[]'));
-    setExpenditures(JSON.parse(localStorage.getItem('cms_expenditures') || '[]'));
-    setMembers(JSON.parse(localStorage.getItem('cms_members') || '[]'));
-  };
 
   const filteredDonations = donations.filter(d => {
     if (typeFilter !== 'all' && d.type !== typeFilter) return false;
@@ -233,30 +233,42 @@ export function Finance() {
         <IncomeModal
           members={members}
           onClose={() => setShowAddIncomeModal(false)}
-          onSave={(donation) => {
-            const newDonation = {
-              ...donation,
-              id: `donation-${Date.now()}`,
-              recordedBy: user!.name,
-              createdAt: new Date().toISOString(),
-            };
-            const updated = [...donations, newDonation];
-            setDonations(updated);
-            localStorage.setItem('cms_donations', JSON.stringify(updated));
+          onSave={async (donation) => {
+            try {
+              const type =
+                donation.type === 'tithe'
+                  ? 'Tithe'
+                  : donation.type === 'offering'
+                  ? 'Offering'
+                  : 'Donation';
 
-            addAuditLog({
-              id: Date.now().toString(),
-              userId: user!.id,
-              userName: user!.name,
-              userRole: user!.role,
-              action: 'donation_recorded',
-              resourceType: 'donation',
-              resourceId: newDonation.id,
-              details: `Recorded donation of GH₵${donation.amount} from ${donation.memberName}`,
-              timestamp: new Date().toISOString(),
-            });
+              await createFinanceTransaction({
+                type,
+                amount: Number(donation.amount || 0),
+                memberId: donation.memberId,
+                note: donation.description || undefined,
+                date: donation.date,
+              });
 
-            setShowAddIncomeModal(false);
+              const finance = await fetchFinance();
+              setDonations(finance.donations);
+              setExpenditures(finance.expenditures);
+
+              addAuditLog({
+                id: Date.now().toString(),
+                userId: user!.id,
+                userName: user!.name,
+                userRole: user!.role,
+                action: 'donation_recorded',
+                resourceType: 'finance',
+                details: `Recorded ${type} of GH₵${donation.amount} from ${donation.memberName}`,
+                timestamp: new Date().toISOString(),
+              });
+
+              setShowAddIncomeModal(false);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || 'Failed to record income');
+            }
           }}
         />
       )}
@@ -265,30 +277,34 @@ export function Finance() {
       {showAddExpenditureModal && (
         <ExpenditureModal
           onClose={() => setShowAddExpenditureModal(false)}
-          onSave={(expenditure) => {
-            const newExpenditure = {
-              ...expenditure,
-              id: `expenditure-${Date.now()}`,
-              recordedBy: user!.name,
-              createdAt: new Date().toISOString(),
-            };
-            const updated = [...expenditures, newExpenditure];
-            setExpenditures(updated);
-            localStorage.setItem('cms_expenditures', JSON.stringify(updated));
+          onSave={async (expenditure) => {
+            try {
+              await createFinanceTransaction({
+                type: 'Expense',
+                amount: Number(expenditure.amount || 0),
+                note: expenditure.description || undefined,
+                date: expenditure.date,
+              });
 
-            addAuditLog({
-              id: Date.now().toString(),
-              userId: user!.id,
-              userName: user!.name,
-              userRole: user!.role,
-              action: 'donation_recorded',
-              resourceType: 'expenditure',
-              resourceId: newExpenditure.id,
-              details: `Recorded expenditure of GH₵${expenditure.amount} for ${expenditure.description}`,
-              timestamp: new Date().toISOString(),
-            });
+              const finance = await fetchFinance();
+              setDonations(finance.donations);
+              setExpenditures(finance.expenditures);
 
-            setShowAddExpenditureModal(false);
+              addAuditLog({
+                id: Date.now().toString(),
+                userId: user!.id,
+                userName: user!.name,
+                userRole: user!.role,
+                action: 'donation_recorded',
+                resourceType: 'finance',
+                details: `Recorded expense of GH₵${expenditure.amount} for ${expenditure.description}`,
+                timestamp: new Date().toISOString(),
+              });
+
+              setShowAddExpenditureModal(false);
+            } catch (e: any) {
+              alert(e?.response?.data?.message || e?.message || 'Failed to record expenditure');
+            }
           }}
         />
       )}

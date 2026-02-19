@@ -8,32 +8,19 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    const result = await login(email, password);
-
-    if (result.success) {
-      navigate('/');
-    } else {
-      setError(result.error || 'Login failed');
+  
+    try {
+      await login(email, password);
+      navigate("/dashboard");
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Login failed");
     }
-
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
   };
 
   return (

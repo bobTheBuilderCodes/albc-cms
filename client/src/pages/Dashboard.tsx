@@ -15,7 +15,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import type { Member, ChurchProgram, SMSLog, Donation, Attendance, Expenditure } from '../types';
-import { initializeMockData } from '../utils/mockData';
+import { fetchAttendance, fetchFinance, fetchMembers, fetchPrograms } from '../api/backend';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function Dashboard() {
@@ -30,25 +30,38 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    initializeMockData();
-    loadData();
-  }, []);
+    const load = async () => {
+      const [mem, pro, att, finance] = await Promise.all([
+        fetchMembers(),
+        fetchPrograms(),
+        fetchAttendance(),
+        fetchFinance(),
+      ]);
 
-  const loadData = () => {
-    setMembers(JSON.parse(localStorage.getItem('cms_members') || '[]'));
-    setPrograms(JSON.parse(localStorage.getItem('cms_programs') || '[]'));
-    setSmsLogs(JSON.parse(localStorage.getItem('cms_sms_logs') || '[]'));
-    setDonations(JSON.parse(localStorage.getItem('cms_donations') || '[]'));
-    setAttendance(JSON.parse(localStorage.getItem('cms_attendance') || '[]'));
-    setExpenditures(JSON.parse(localStorage.getItem('cms_expenditures') || '[]'));
-  };
+      setMembers(mem);
+      setPrograms(pro);
+      setAttendance(att);
+      setDonations(finance.donations);
+      setExpenditures(finance.expenditures);
+
+      // Messaging is not yet backed by an API in this repo
+      setSmsLogs([]);
+    };
+
+    load().catch((e) => {
+      // Keep dashboard usable even if a call fails
+      console.error("Dashboard load failed", e);
+    });
+  }, []);
 
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   
   const birthdaysThisMonth = members.filter(m => {
+    if (!m.dateOfBirth) return false;
     const dob = new Date(m.dateOfBirth);
+    if (Number.isNaN(dob.getTime())) return false;
     return dob.getMonth() === currentMonth;
   }).sort((a, b) => {
     const dateA = new Date(a.dateOfBirth).getDate();
