@@ -9,7 +9,6 @@ import {
   DollarSign, 
   FileText,
   Settings,
-  Church,
   ChevronLeft,
   ChevronRight,
   UserCog,
@@ -29,7 +28,7 @@ const navItems = [
   { to: '/finance', icon: DollarSign, label: 'Finance', module: 'finance' },
   { to: '/audit', icon: FileText, label: 'Audit Logs', module: 'audit' },
   { to: '/user-management', icon: UserCog, label: 'User Management', module: 'users' },
-  { to: '/notifications-configration', icon: BellRing, label: 'Notifications Configration', module: 'settings' },
+  { to: '/notifications-configuration', icon: BellRing, label: 'Notifications Configuration', module: 'settings' },
   { to: '/settings', icon: Settings, label: 'Settings', module: 'settings' },
 ];
 
@@ -70,22 +69,29 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-gradient-to-b from-blue-950 via-indigo-900 to-cyan-900 border-r border-cyan-800/40 flex flex-col shadow-xl shadow-blue-950/20 transition-all duration-300`}>
+    <aside className={`${isCollapsed ? 'w-20' : 'w-72'} bg-linear-to-b from-blue-950 via-indigo-900 to-cyan-900 border-r border-cyan-800/40 flex flex-col shadow-xl shadow-blue-950/20 transition-all duration-300 overflow-x-hidden`}>
       <div className={`p-6 border-b border-cyan-500/20 ${isCollapsed ? 'px-4' : ''}`}>
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <div className="w-11 h-11 bg-gradient-to-br from-fuchsia-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-fuchsia-500/30 flex-shrink-0">
-            <Church className="w-6 h-6 text-white" />
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between gap-3'}`}>
+          <div className={`flex items-center ${isCollapsed ? '' : 'gap-3'}`}>
+            
+            {!isCollapsed && (
+              <div>
+                <h1 className="text-xl text-white font-bold truncate max-w-42.5">{churchName}</h1>
+                <p className="text-xs text-cyan-100/80 font-medium">Management System</p>
+              </div>
+            )}
           </div>
-          {!isCollapsed && (
-            <div>
-              <h1 className="text-xl text-white font-bold truncate max-w-[190px]">{churchName}</h1>
-              <p className="text-xs text-cyan-100/80 font-medium">Management System</p>
-            </div>
-          )}
+          <button
+            onClick={toggleSidebar}
+            className="inline-flex items-center justify-center w-9 h-9 text-cyan-100 hover:bg-white/10 rounded-lg transition-all"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
         {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}
@@ -94,7 +100,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `flex items-center ${isCollapsed ? 'justify-center px-3' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 group relative ${
                 isActive
-                  ? 'bg-gradient-to-r from-fuchsia-500 to-sky-400 text-white shadow-lg shadow-fuchsia-500/35'
+                  ? 'bg-linear-to-r from-fuchsia-500 to-sky-400 text-white shadow-lg shadow-fuchsia-500/35'
                   : 'text-slate-200 hover:bg-white/10 hover:text-white'
               }`
             }
@@ -102,7 +108,7 @@ export function Sidebar() {
           >
             {({ isActive }) => (
               <>
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-cyan-200/70 group-hover:text-cyan-100'} transition-colors flex-shrink-0`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-cyan-200/70 group-hover:text-cyan-100'} transition-colors shrink-0`} />
                 {!isCollapsed && (
                   <span className="font-medium text-[15px]">{item.label}</span>
                 )}
@@ -117,28 +123,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-cyan-500/20">
-        <button
-          onClick={toggleSidebar}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-cyan-100 hover:bg-white/10 rounded-xl transition-all"
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <>
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Collapse</span>
-            </>
-          )}
-        </button>
-        {!isCollapsed && (
-          <div className="text-center mt-3">
-            <p className="text-xs text-cyan-100/70 font-medium">© 2026 {churchName}</p>
-            <p className="text-xs text-cyan-100/50 mt-1">Version 1.0.0</p>
-          </div>
-        )}
-      </div>
+      
     </aside>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, Save } from "lucide-react";
 import { useToast } from "../contexts/ToastContext";
 import { fetchSettings, upsertSettings, type SettingsPayload } from "../api/backend";
+import { useSidebar } from "../contexts/SidebarContext";
 
 const defaults = {
   enableProgramReminders: true,
@@ -18,8 +19,9 @@ const defaults = {
     "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}",
 };
 
-export function NotificationsConfigration() {
+export function NotificationsConfiguration() {
   const toast = useToast();
+  const { isCollapsed } = useSidebar();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SettingsPayload>({
@@ -82,7 +84,7 @@ export function NotificationsConfigration() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 mb-0">Notifications Configration</h1>
+        <h1 className="text-2xl font-bold text-neutral-900 mb-0">Notifications Configuration</h1>
         <p className="text-neutral-600">Configure the messages used for system email notifications</p>
       </div>
 
@@ -126,7 +128,11 @@ export function NotificationsConfigration() {
         />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 md:left-72 bg-white/95 backdrop-blur border-t border-neutral-200 p-4 z-20">
+      <div
+        className={`fixed bottom-0 right-0 bg-white/95 backdrop-blur border-t border-neutral-200 p-4 z-20 transition-all duration-300 ${
+          isCollapsed ? "left-20" : "left-72"
+        }`}
+      >
         <div className="max-w-6xl mx-auto flex items-center justify-end">
           <button
             onClick={() => save()}
