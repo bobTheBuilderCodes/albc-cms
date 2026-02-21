@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const requiredKeys = ["MONGO_URI", "JWT_SECRET"] as const;
+const requiredKeys = ["JWT_SECRET"] as const;
 
 type RequiredKey = (typeof requiredKeys)[number];
 
@@ -30,9 +30,27 @@ const readRequired = (key: RequiredKey): string => {
   return value;
 };
 
+const resolveMongoUri = (): string => {
+  const nodeEnv = process.env.NODE_ENV || "development";
+  const localUri = (process.env.MONGO_URI_LOCAL || "").trim();
+  const primaryUri = (process.env.MONGO_URI || "").trim();
+
+  if (nodeEnv === "production") {
+    if (!primaryUri) {
+      throw new Error("Missing required environment variable: MONGO_URI");
+    }
+    return primaryUri;
+  }
+
+  if (localUri) return localUri;
+  if (primaryUri) return primaryUri;
+
+  throw new Error("Missing Mongo URI. Set MONGO_URI_LOCAL for local/dev or MONGO_URI for production.");
+};
+
 export const env: Env = {
   PORT: Number(process.env.PORT || 5000),
-  MONGO_URI: readRequired("MONGO_URI"),
+  MONGO_URI: resolveMongoUri(),
   JWT_SECRET: readRequired("JWT_SECRET"),
   NODE_ENV: process.env.NODE_ENV || "development",
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@church.com",
