@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: server
     buildCommand: npm install --include=dev && npm run build
-    startCommand: npm run start
+    startCommand: node -e "const req=['MONGO_URI','JWT_SECRET']; const miss=req.filter((k)=>!process.env[k]); if(miss.length){console.error('Missing required env vars:', miss.join(', ')); process.exit(1)}" && npm run start
     envVars:
       - key: NODE_ENV
         value: production
