@@ -5,10 +5,34 @@ import { HttpError } from "../../utils/httpError";
 import { ensureDate, ensureString, isDefined } from "../../utils/validators";
 import { notificationService } from "../../services/notification.service";
 
+const memberGenders = ["male", "female"] as const;
+const maritalStatuses = ["single", "married", "widowed", "divorced"] as const;
+const membershipStatuses = ["active", "inactive"] as const;
+
+const ensureEnum = <T extends readonly string[]>(
+  value: unknown,
+  allowed: T,
+  field: string
+): T[number] => {
+  if (typeof value !== "string" || !(allowed as readonly string[]).includes(value)) {
+    throw new HttpError(400, `${field} must be one of: ${allowed.join(", ")}`);
+  }
+  return value as T[number];
+};
+
 export const createMember = asyncHandler(async (req: Request, res: Response) => {
   const member = await Member.create({
     firstName: ensureString(req.body.firstName, "firstName"),
     lastName: ensureString(req.body.lastName, "lastName"),
+    gender: isDefined(req.body.gender)
+      ? ensureEnum(req.body.gender, memberGenders, "gender")
+      : undefined,
+    maritalStatus: isDefined(req.body.maritalStatus)
+      ? ensureEnum(req.body.maritalStatus, maritalStatuses, "maritalStatus")
+      : undefined,
+    membershipStatus: isDefined(req.body.membershipStatus)
+      ? ensureEnum(req.body.membershipStatus, membershipStatuses, "membershipStatus")
+      : undefined,
     department: req.body.department,
     phone: req.body.phone,
     email: req.body.email,
@@ -47,6 +71,19 @@ export const updateMember = asyncHandler(async (req: Request, res: Response) => 
 
   if (isDefined(req.body.firstName)) updates.firstName = ensureString(req.body.firstName, "firstName");
   if (isDefined(req.body.lastName)) updates.lastName = ensureString(req.body.lastName, "lastName");
+  if (isDefined(req.body.gender)) {
+    updates.gender = ensureEnum(req.body.gender, memberGenders, "gender");
+  }
+  if (isDefined(req.body.maritalStatus)) {
+    updates.maritalStatus = ensureEnum(req.body.maritalStatus, maritalStatuses, "maritalStatus");
+  }
+  if (isDefined(req.body.membershipStatus)) {
+    updates.membershipStatus = ensureEnum(
+      req.body.membershipStatus,
+      membershipStatuses,
+      "membershipStatus"
+    );
+  }
   if (isDefined(req.body.department)) updates.department = req.body.department;
   if (isDefined(req.body.phone)) updates.phone = req.body.phone;
   if (isDefined(req.body.email)) updates.email = req.body.email;

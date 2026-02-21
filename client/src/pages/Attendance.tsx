@@ -420,19 +420,19 @@ export function Attendance() {
           </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="border border-gray-200 p-4 rounded-xl">
+              <div className="border border-gray-200 dark:border-transparent p-4 rounded-xl">
                 <p className="text-2xl font-semibold">{sundayDates.length}</p>
                 <p className="text-sm text-neutral-500">Sundays in {selectedYear}</p>
               </div>
-              <div className="border border-gray-200 p-4 rounded-xl">
+              <div className="border border-gray-200 dark:border-transparent p-4 rounded-xl">
                 <p className="text-2xl font-semibold">{sundayFilteredMembers.length}</p>
                 <p className="text-sm text-neutral-500">Members</p>
               </div>
-              <div className="border border-gray-200 p-4 rounded-xl">
+              <div className="border border-gray-200 dark:border-transparent p-4 rounded-xl">
                 <p className="text-2xl font-semibold text-emerald-700">{sundayPresentCount}</p>
                 <p className="text-sm text-neutral-500">Present</p>
               </div>
-              <div className="border border-gray-200 p-4 rounded-xl">
+              <div className="border border-gray-200 dark:border-transparent p-4 rounded-xl">
                 <p className="text-2xl font-semibold text-rose-700">{sundayAbsentCount}</p>
                 <p className="text-sm text-neutral-500">Absent ({sundayRate.toFixed(0)}% attendance)</p>
               </div>

@@ -115,7 +115,7 @@ export function Programs() {
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-white border border-neutral-300 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-white border border-neutral-300 dark:border-transparent rounded-lg p-1">
             <button
               onClick={() => setViewMode('list')}
               className={`px-4 py-2 rounded-md transition-colors ${
@@ -350,8 +350,8 @@ function CalendarView({ programs }: { programs: ChurchProgram[] }) {
     days.push(
       <div
         key={day}
-        className={`h-24 border border-neutral-200 p-2 ${
-          isToday ? 'bg-gray-50 border-primary-300' : 'bg-white'
+        className={`h-24 border border-neutral-200 dark:border-slate-800 p-2 ${
+          isToday ? 'bg-gray-50 dark:bg-slate-800/70 border-primary-300 dark:border-primary-500' : 'bg-white dark:bg-slate-900/70'
         }`}
       >
         <div className={`text-sm mb-1 ${isToday ? 'text-primary-700 font-bold' : 'text-neutral-600'}`}>
@@ -401,9 +401,9 @@ function CalendarView({ programs }: { programs: ChurchProgram[] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-neutral-200 border border-neutral-200">
+      <div className="grid grid-cols-7 gap-px bg-neutral-200 dark:bg-slate-800/70 border border-neutral-200 dark:border-slate-800">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="bg-neutral-50 px-2 py-3 text-center text-sm text-neutral-700">
+          <div key={day} className="bg-neutral-50 dark:bg-slate-900/80 px-2 py-3 text-center text-sm text-neutral-700">
             {day}
           </div>
         ))}

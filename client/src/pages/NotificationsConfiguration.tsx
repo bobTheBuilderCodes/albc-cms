@@ -3,6 +3,7 @@ import { Bell, Save } from "lucide-react";
 import { useToast } from "../contexts/ToastContext";
 import { fetchSettings, upsertSettings, type SettingsPayload } from "../api/backend";
 import { useSidebar } from "../contexts/SidebarContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 const defaults = {
   enableProgramReminders: true,
@@ -22,6 +23,7 @@ const defaults = {
 export function NotificationsConfiguration() {
   const toast = useToast();
   const { isCollapsed } = useSidebar();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SettingsPayload>({
@@ -129,7 +131,11 @@ export function NotificationsConfiguration() {
       </div>
 
       <div
-        className={`fixed bottom-0 right-0 bg-white/95 backdrop-blur border-t border-neutral-200 p-4 z-20 transition-all duration-300 ${
+        className={`fixed bottom-0 right-0 backdrop-blur p-4 z-20 transition-all duration-300 ${
+          theme === "dark"
+            ? "bg-slate-950/90 border-t border-transparent"
+            : "bg-white border-t border-neutral-200"
+        } ${
           isCollapsed ? "left-20" : "left-72"
         }`}
       >

@@ -2,6 +2,8 @@ export type NotificationType =
   | 'birthday'
   | 'program_reminder'
   | 'member_added'
+  | 'program_added'
+  | 'finance_entry'
   | 'donation_received'
   | 'attendance_low'
   | 'sms_failed'

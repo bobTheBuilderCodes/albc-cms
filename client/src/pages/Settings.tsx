@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { useToast } from '../contexts/ToastContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { addAuditLog } from '../utils/mockData';
 import { fetchSettings, upsertSettings } from '../api/backend';
 import { 
@@ -24,6 +25,7 @@ export function Settings() {
   const { user } = useAuth();
   const { confirm } = useConfirm();
   const toast = useToast();
+  const { theme } = useTheme();
   const [settingsId, setSettingsId] = useState<string | undefined>(undefined);
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('cms_settings');
@@ -639,8 +641,22 @@ export function Settings() {
      
 
         {/* Save Button */}
-        <div className="sticky bottom-0 z-30 -mx-6 px-6 py-4 bg-white/95 backdrop-blur border-t border-neutral-200 flex items-center gap-4">
-            <button
+        <div
+          className={`sticky bottom-0 z-30 -mx-6 px-6 py-4 backdrop-blur flex items-center justify-between gap-4 ${
+            theme === 'dark'
+              ? 'bg-slate-950/90 border-t border-transparent'
+              : 'bg-white border-t border-neutral-200'
+          }`}
+        >
+          {saved ? (
+            <span className="text-sm text-success-600 flex items-center gap-2">
+              <div className="w-2 h-2 bg-success-600 rounded-full animate-pulse"></div>
+              Settings saved successfully!
+            </span>
+          ) : (
+            <span />
+          )}
+          <button
             onClick={() => handleSave().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to save settings'))}
             disabled={loadingSettings}
             className="flex items-center gap-2 px-6 py-3 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
@@ -648,12 +664,6 @@ export function Settings() {
             <Save className="w-5 h-5" />
             {loadingSettings ? 'Saving...' : 'Save Settings'}
           </button>
-          {saved && (
-            <span className="text-sm text-success-600 flex items-center gap-2">
-              <div className="w-2 h-2 bg-success-600 rounded-full animate-pulse"></div>
-              Settings saved successfully!
-            </span>
-          )}
         </div>
       </div>
     </div>

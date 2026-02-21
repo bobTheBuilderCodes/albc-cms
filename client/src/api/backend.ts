@@ -1,5 +1,6 @@
 import API from "./axios";
 import type { Attendance, ChurchProgram, Donation, Expenditure, Member, User } from "../types";
+import type { Notification } from "../types/notifications";
 
 type ApiEnvelope<T> = { success: boolean; data: T };
 
@@ -21,6 +22,9 @@ type ApiMember = {
   _id: string;
   firstName: string;
   lastName: string;
+  gender?: "male" | "female";
+  maritalStatus?: "single" | "married" | "widowed" | "divorced";
+  membershipStatus?: "active" | "inactive";
   department?: string;
   phone?: string;
   email?: string;
@@ -40,10 +44,10 @@ const mapMember = (m: ApiMember): Member => {
     phoneNumber: m.phone ?? "",
     email: m.email ?? "",
     dateOfBirth: m.dateOfBirth ? isoDate(m.dateOfBirth).slice(0, 10) : "",
-    gender: "male",
-    maritalStatus: "single",
+    gender: m.gender ?? "male",
+    maritalStatus: m.maritalStatus ?? "single",
     department: m.department || "General",
-    membershipStatus: "active",
+    membershipStatus: m.membershipStatus ?? "active",
     joinDate: (m.joinDate ? isoDate(m.joinDate) : createdAt).slice(0, 10),
     address: m.address,
     createdAt,
@@ -70,6 +74,9 @@ export async function createMember(input: Partial<Member>): Promise<Member> {
     lastName: lastName || "Name",
     phone: input.phoneNumber || undefined,
     email: input.email || undefined,
+    gender: input.gender || undefined,
+    maritalStatus: input.maritalStatus || undefined,
+    membershipStatus: input.membershipStatus || undefined,
     department: input.department || undefined,
     address: input.address || undefined,
     dateOfBirth: input.dateOfBirth || undefined,
@@ -91,6 +98,9 @@ export async function updateMember(memberId: string, input: Partial<Member>): Pr
   }
   if (input.phoneNumber !== undefined) payload.phone = input.phoneNumber || undefined;
   if (input.email !== undefined) payload.email = input.email || undefined;
+  if (input.gender !== undefined) payload.gender = input.gender || undefined;
+  if (input.maritalStatus !== undefined) payload.maritalStatus = input.maritalStatus || undefined;
+  if (input.membershipStatus !== undefined) payload.membershipStatus = input.membershipStatus || undefined;
   if (input.department !== undefined) payload.department = input.department || undefined;
   if (input.address !== undefined) payload.address = input.address || undefined;
   if (input.dateOfBirth !== undefined) payload.dateOfBirth = input.dateOfBirth || undefined;
@@ -657,4 +667,45 @@ export async function sendSmsBroadcast(payload: {
 }) {
   const res = await API.post<ApiEnvelope<ApiSmsSendResponse>>("/sms/send", payload);
   return res.data.data;
+}
+
+// ---------- In-app Notifications ----------
+type ApiNotification = {
+  id: string;
+  type: Notification["type"];
+  title: string;
+  message: string;
+  actionUrl?: string;
+  timestamp: string;
+  isRead: boolean;
+};
+
+type NotificationsEnvelope = {
+  success: boolean;
+  data: ApiNotification[];
+  unreadCount: number;
+};
+
+export async function fetchMyNotifications(): Promise<{ notifications: Notification[]; unreadCount: number }> {
+  const res = await API.get<NotificationsEnvelope>("/notifications/me");
+  return {
+    notifications: res.data.data.map((n) => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      timestamp: n.timestamp,
+      isRead: n.isRead,
+      actionUrl: n.actionUrl,
+    })),
+    unreadCount: res.data.unreadCount,
+  };
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  await API.patch(`/notifications/${notificationId}/read`);
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  await API.patch("/notifications/read-all");
 }

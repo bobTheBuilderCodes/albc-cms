@@ -4,6 +4,7 @@ export const startBirthdayScheduler = (): void => {
   const run = async () => {
     try {
       await notificationService.runDailyBirthdayNotifications();
+      await notificationService.runDueProgramReminders();
     } catch (error) {
       console.error("Birthday notification job failed", error);
     }

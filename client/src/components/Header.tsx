@@ -1,40 +1,45 @@
-import { Bell, LogOut, User, ChevronDown, Check, X } from 'lucide-react';
+import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { generateNotifications, markAsRead, markAllAsRead, isNotificationRead } from '../utils/notifications';
 import type { Notification } from '../types/notifications';
+import {
+  fetchMyNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from '../api/backend';
+import { useTheme } from '../contexts/ThemeContext';
 
 export function Header() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadNotifications();
+    loadNotifications().catch(() => undefined);
     // Refresh notifications every 30 seconds
-    const interval = setInterval(loadNotifications, 30000);
+    const interval = setInterval(() => {
+      loadNotifications().catch(() => undefined);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadNotifications = () => {
-    const allNotifications = generateNotifications();
-    const withReadStatus = allNotifications.map(n => ({
-      ...n,
-      isRead: isNotificationRead(n.id)
-    }));
-    setNotifications(withReadStatus);
+  const loadNotifications = async () => {
+    const response = await fetchMyNotifications();
+    setNotifications(response.notifications);
+    setUnreadCount(response.unreadCount);
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
   const handleNotificationClick = (notification: Notification) => {
-    markAsRead(notification.id);
+    markNotificationAsRead(notification.id).catch(() => undefined);
     setNotifications(prev => prev.map(n => 
       n.id === notification.id ? { ...n, isRead: true } : n
     ));
+    setUnreadCount((prev) => Math.max(0, prev - (notification.isRead ? 0 : 1)));
     if (notification.actionUrl) {
       navigate(notification.actionUrl);
       setShowNotifications(false);
@@ -42,15 +47,18 @@ export function Header() {
   };
 
   const handleMarkAllRead = () => {
-    markAllAsRead(notifications);
+    markAllNotificationsAsRead().catch(() => undefined);
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'birthday': return '🎂';
       case 'program_reminder': return '📅';
+      case 'program_added': return '🗓️';
       case 'member_added': return '👤';
+      case 'finance_entry': return '💸';
       case 'donation_received': return '💰';
       case 'sms_failed': return '⚠️';
       case 'attendance_low': return '📊';
@@ -79,6 +87,13 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-3">
+        <button
+          onClick={toggleTheme}
+          className="p-2.5 text-neutral-500 bg-gray-200 hover:bg-neutral-100 rounded-xl transition-all"
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
         {/* Notifications */}
         <div className="relative">
           <button 

@@ -23,6 +23,22 @@ import {
 import { Pagination } from "../components/Pagination";
 import { createMember as apiCreateMember, deleteMember as apiDeleteMember, fetchMembers, updateMember as apiUpdateMember } from "../api/backend";
 
+const darkInitialGradients = [
+  "dark:bg-gradient-to-br dark:from-sky-400 dark:to-blue-600",
+  "dark:bg-gradient-to-br dark:from-cyan-400 dark:to-indigo-600",
+  "dark:bg-gradient-to-br dark:from-blue-400 dark:to-violet-600",
+  "dark:bg-gradient-to-br dark:from-indigo-400 dark:to-sky-700",
+  "dark:bg-gradient-to-br dark:from-teal-400 dark:to-blue-700",
+];
+
+const getInitialGradientClass = (value: string): string => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return darkInitialGradients[hash % darkInitialGradients.length];
+};
+
 export function Members() {
   const [members, setMembers] = useState<Member[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
@@ -156,7 +172,7 @@ export function Members() {
           <div className="flex items-center gap-3">
             <button
               onClick={exportToCSV}
-              className="bg-white flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+              className="bg-white flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
             >
               <Download className="w-4 h-4" />
               Export CSV
@@ -164,7 +180,7 @@ export function Members() {
 
             <button
               onClick={() => setShowBulkUploadModal(true)}
-              className="bg-white flex items-center gap-2 px-4 py-2 border border-gray-200 text-primary-600 rounded-lg hover:bg-gray-50 transition-colors"
+              className="bg-white flex items-center gap-2 px-4 py-2 border border-neutral-200 text-primary-600 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Upload className="w-5 h-5" />
               Bulk Upload
@@ -250,8 +266,10 @@ export function Members() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-200 from-primary-500 to-accent-500 rounded-full flex items-center justify-center">
-                          <span className="text-gray-700 text-sm">
+                        <div
+                          className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${getInitialGradientClass(member.fullName)}`}
+                        >
+                          <span className="text-gray-700 dark:text-white text-sm font-semibold">
                             {member.fullName.charAt(0)}
                           </span>
                         </div>

@@ -8,6 +8,7 @@ import attendanceRoutes from "./modules/attendance/attendance.routes";
 import financeRoutes from "./modules/finance/finance.routes";
 import settingsRoutes from "./modules/settings/settings.routes";
 import smsRoutes from "./modules/sms/sms.routes";
+import inAppNotificationRoutes from "./modules/notifications/in-app-notification.routes";
 import { errorHandler, notFound } from "./middlewares/error.middleware";
 
 const app = express();
@@ -27,6 +28,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/finance", financeRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/sms", smsRoutes);
+app.use("/api/notifications", inAppNotificationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

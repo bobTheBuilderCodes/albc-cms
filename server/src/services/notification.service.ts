@@ -2,6 +2,10 @@ import Member, { IMember } from "../modules/members/member.model";
 import Settings from "../modules/settings/settings.model";
 import User, { IUser } from "../modules/users/user.model";
 import BirthdayEmailLog from "../modules/notifications/birthday-email-log.model";
+import InAppNotification, {
+  InAppNotificationType,
+} from "../modules/notifications/in-app-notification.model";
+import { Program } from "../modules/programs/programs.model";
 import { emailService } from "./email.service";
 
 type FinanceNotificationInput = {
@@ -69,6 +73,32 @@ const getMemberEmails = async (): Promise<string[]> => {
   return members.map((member) => String(member.email || "").trim()).filter(Boolean);
 };
 
+const createInAppNotificationForUsers = async (input: {
+  type: InAppNotificationType;
+  title: string;
+  message: string;
+  actionUrl?: string;
+  dedupeKey?: string;
+}): Promise<void> => {
+  const users = await User.find({ isActive: true }).select("_id");
+  const recipients = users.map((user) => user._id);
+  if (recipients.length === 0) return;
+
+  if (input.dedupeKey) {
+    const existing = await InAppNotification.findOne({ dedupeKey: input.dedupeKey });
+    if (existing) return;
+  }
+
+  await InAppNotification.create({
+    type: input.type,
+    title: input.title,
+    message: input.message,
+    actionUrl: input.actionUrl,
+    recipients,
+    dedupeKey: input.dedupeKey,
+  });
+};
+
 const safeSend = async (task: () => Promise<void>, label: string): Promise<void> => {
   try {
     await task();
@@ -111,8 +141,6 @@ const getNotificationConfig = async () => {
 
 export const notificationService = {
   async sendMemberWelcome(member: IMember): Promise<void> {
-    const recipient = String(member.email || "").trim();
-    if (!recipient) return;
     const config = await getNotificationConfig();
     if (!config.memberAdded) {
       console.log("Member welcome notification skipped: feature is disabled in settings.");
@@ -120,6 +148,20 @@ export const notificationService = {
     }
 
     const name = memberDisplayName(member);
+    await safeSend(
+      () =>
+        createInAppNotificationForUsers({
+          type: "member_added",
+          title: "New Member Added",
+          message: `${name} has been added to members.`,
+          actionUrl: "/members",
+        }),
+      "member in-app"
+    );
+
+    const recipient = String(member.email || "").trim();
+    if (!recipient) return;
+
     const message = applyTemplate(config.memberAddedNotificationTemplate, {
       member_name: name,
       church_name: config.churchName,
@@ -182,6 +224,17 @@ export const notificationService = {
   async sendProgramCreatedNotification(payload: ProgramNotificationInput): Promise<void> {
     const config = await getNotificationConfig();
     if (!config.program) return;
+
+    await safeSend(
+      () =>
+        createInAppNotificationForUsers({
+          type: "program_added",
+          title: "New Program Created",
+          message: `${payload.title} has been added to programs.`,
+          actionUrl: "/programs",
+        }),
+      "program in-app"
+    );
 
     const recipients = await getMemberEmails();
     if (recipients.length === 0) return;
@@ -265,6 +318,18 @@ export const notificationService = {
       if (existingLog) continue;
 
       const fullName = memberDisplayName(member);
+      await safeSend(
+        () =>
+          createInAppNotificationForUsers({
+            type: "birthday",
+            title: "Birthday Notification",
+            message: `Today is ${fullName}'s birthday.`,
+            actionUrl: `/members/${String(member._id)}`,
+            dedupeKey: `birthday:${String(member._id)}:${dateKey}`,
+          }),
+        "birthday in-app"
+      );
+
       const celebrantMessage = applyBirthdayTemplate(
         config.birthdayMessageTemplate,
         fullName,
@@ -300,6 +365,31 @@ export const notificationService = {
         memberId: member._id,
         dateKey,
       });
+    }
+  },
+
+  async runDueProgramReminders(): Promise<void> {
+    const now = new Date();
+    const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+    const dayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    const dateKey = todayDateKey();
+
+    const duePrograms = await Program.find({
+      date: { $gte: dayStart, $lte: dayEnd },
+    }).select("title");
+
+    for (const program of duePrograms) {
+      await safeSend(
+        () =>
+          createInAppNotificationForUsers({
+            type: "program_reminder",
+            title: "Program Reminder",
+            message: `${program.title} is due today.`,
+            actionUrl: "/programs",
+            dedupeKey: `program-reminder:${String(program._id)}:${dateKey}`,
+          }),
+        "program reminder in-app"
+      );
     }
   },
 };
