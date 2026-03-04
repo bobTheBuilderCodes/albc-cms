@@ -123,23 +123,23 @@ export function UserManagement() {
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">User Management</h1>
-            <p className="text-neutral-600">Manage system users and their permissions</p>
+            <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">User Management</h1>
+            <p className="text-neutral-600 text-sm sm:text-base">Manage system users and their permissions</p>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Add User
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="border border-gray-200 bg-white from-primary-500 to-primary-600 rounded-xl p-6 text-gray-700">
             <div className="flex items-center justify-between mb-2">
               <UserCog className="w-8 h-8 text-gray-500" />
@@ -165,7 +165,7 @@ export function UserManagement() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
@@ -204,14 +204,71 @@ export function UserManagement() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="md:hidden p-3 space-y-3">
+          {currentUsers.length > 0 ? (
+            currentUsers.map((usr) => (
+              <div key={usr.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-gray-200 from-primary-500 to-accent-500 rounded-full flex items-center justify-center">
+                      <span className="text-gray-700 text-sm">{usr.name.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-neutral-900 font-medium truncate">{usr.name}</p>
+                      <p className="text-xs text-neutral-500 truncate">{usr.email}</p>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${
+                    usr.isActive ? 'bg-success-50 text-success-700' : 'bg-neutral-100 text-neutral-700'
+                  }`}>
+                    {usr.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 capitalize font-semibold">
+                    <Shield className="w-3 h-3" />
+                    {usr.role}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setEditingUser(usr)}
+                    className="p-2 text-primary-600 hover:bg-gray-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteUser(usr.id).catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to delete user'))}
+                    disabled={usr.id === user?.id}
+                    className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-10 text-center">
+              <Search className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+              <p className="text-sm text-neutral-700 font-medium">
+                {searchQuery ? "No users match your search" : "No users found"}
+              </p>
+              <p className="text-xs text-neutral-500">
+                {searchQuery ? "Try a different name or email." : "Create users to see them listed here."}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
                 <th className="text-left px-6 py-3 text-sm text-neutral-700">User</th>
-                <th className="text-left px-6 py-3 text-sm text-neutral-700">Email</th>
+                <th className="hidden md:table-cell text-left px-6 py-3 text-sm text-neutral-700">Email</th>
                 <th className="text-left px-6 py-3 text-sm text-neutral-700">Role</th>
-                <th className="text-left px-6 py-3 text-sm text-neutral-700">Modules</th>
+                <th className="hidden lg:table-cell text-left px-6 py-3 text-sm text-neutral-700">Modules</th>
                 <th className="text-left px-6 py-3 text-sm text-neutral-700">Status</th>
                 <th className="text-right px-6 py-3 text-sm text-neutral-700">Actions</th>
               </tr>
@@ -233,7 +290,7 @@ export function UserManagement() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden md:table-cell px-6 py-4">
                     <div className="flex items-center gap-2 text-sm text-neutral-700">
                       <Mail className="w-4 h-4 text-neutral-400" />
                       {usr.email}
@@ -245,7 +302,7 @@ export function UserManagement() {
                       {usr.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden lg:table-cell px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {usr.modules.slice(0, 3).map(mod => (
                         <span key={mod} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-primary-700 font-medium">

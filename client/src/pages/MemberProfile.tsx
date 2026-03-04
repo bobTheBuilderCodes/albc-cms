@@ -121,7 +121,7 @@ export function MemberProfile() {
 
   if (!member) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <UserCircle className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
           <h3 className="text-neutral-600 mb-4">Member not found</h3>
@@ -188,7 +188,7 @@ export function MemberProfile() {
       <div className=" bg-blue-900 from-primary-500 via-primary-600 to-accent-500 relative">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40"></div>
         
-        <div className="max-w-7xl mx-auto px-6 py-6 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 relative">
           <button
             onClick={() => navigate('/members')}
             className="flex items-center gap-2 text-white/90 hover:text-white mb-6 transition-colors font-medium"
@@ -197,16 +197,16 @@ export function MemberProfile() {
             Back to Members
           </button>
 
-          <div className="flex items-start gap-6">
-            <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center shadow-2xl ring-4 ring-white/20">
-              <span className="text-primary-600 text-4xl font-bold">{member.fullName.charAt(0)}</span>
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+            <div className="w-20 h-20 sm:w-28 sm:h-28 bg-white rounded-2xl flex items-center justify-center shadow-2xl ring-4 ring-white/20">
+              <span className="text-primary-600 text-3xl sm:text-4xl font-bold">{member.fullName.charAt(0)}</span>
             </div>
 
-            <div className="flex-1">
-              <div className="flex items-start justify-between">
+            <div className="flex-1 w-full">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
-                  <h1 className="text-white mb-3 font-bold">{member.fullName}</h1>
-                  <div className="flex items-center gap-3 mb-4">
+                  <h1 className="text-white text-xl sm:text-3xl mb-3 font-bold">{member.fullName}</h1>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
                     <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-semibold">
                       {member.department}
                     </span>
@@ -219,7 +219,7 @@ export function MemberProfile() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-white/90">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-white/90">
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="w-4 h-4" />
                       <span className="font-medium">{member.email}</span>
@@ -253,7 +253,7 @@ export function MemberProfile() {
 
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-white/90 transition-colors font-semibold shadow-lg"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-white/90 transition-colors font-semibold shadow-lg"
                 >
                   <Edit className="w-4 h-4" />
                   Edit Profile
@@ -263,46 +263,46 @@ export function MemberProfile() {
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-4 mt-6">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20">
               <div className="flex items-center justify-between mb-2">
                 <Users className="w-7 h-7 text-white/80" />
                 <TrendingUp className="w-4 h-4 text-white/60" />
               </div>
-              <p className="text-3xl text-white mb-0.5 font-bold">{attendance.length}</p>
-              <p className="text-sm text-white/80 font-medium">Total Attendance</p>
+              <p className="text-2xl sm:text-3xl text-white mb-0.5 font-bold">{attendance.length}</p>
+              <p className="text-xs sm:text-sm text-white/80 font-medium">Total Attendance</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20">
               <div className="flex items-center justify-between mb-2">
                 <CheckCircle2 className="w-7 h-7 text-white/80" />
                 <TrendingUp className="w-4 h-4 text-white/60" />
               </div>
-              <p className="text-3xl text-white mb-0.5 font-bold">{attendanceRate.toFixed(0)}%</p>
-              <p className="text-sm text-white/80 font-medium">Attendance Rate</p>
+              <p className="text-2xl sm:text-3xl text-white mb-0.5 font-bold">{attendanceRate.toFixed(0)}%</p>
+              <p className="text-xs sm:text-sm text-white/80 font-medium">Attendance Rate</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20">
               <div className="flex items-center justify-between mb-2">
                 <DollarSign className="w-7 h-7 text-white/80" />
                 <TrendingUp className="w-4 h-4 text-white/60" />
               </div>
-              <p className="text-3xl text-white mb-0.5 font-bold">GH₵ {totalDonations.toLocaleString()}</p>
-              <p className="text-sm text-white/80 font-medium">Total Donations</p>
+              <p className="text-2xl sm:text-3xl text-white mb-0.5 font-bold">GH₵ {totalDonations.toLocaleString()}</p>
+              <p className="text-xs sm:text-sm text-white/80 font-medium">Total Donations</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs Section */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="bg-white rounded-2xl shadow-xl border border-neutral-200">
           {/* Tab Navigation */}
-          <div className="border-b border-neutral-200 px-6">
-            <div className="flex gap-6">
+          <div className="border-b border-neutral-200 px-4 sm:px-6">
+            <div className="flex gap-2 sm:gap-4 overflow-x-auto no-scrollbar py-2">
               <button
                 onClick={() => setActiveTab('attendance')}
-                className={`py-3 px-6 my-3 font-semibold text-sm transition-all relative ${
+                className={`py-2.5 px-4 sm:px-6 my-1 font-semibold text-sm transition-all relative whitespace-nowrap ${
                   activeTab === 'attendance'
                     ? 'text-primary-600 bg-gray-200 rounded-lg'
                     : 'text-neutral-500 hover:text-neutral-700'
@@ -315,7 +315,7 @@ export function MemberProfile() {
               </button>
               <button
                 onClick={() => setActiveTab('donations')}
-                className={`py-3 px-6 my-3 font-semibold text-sm transition-all relative ${
+                className={`py-2.5 px-4 sm:px-6 my-1 font-semibold text-sm transition-all relative whitespace-nowrap ${
                   activeTab === 'donations'
                     ? 'text-primary-600 text-primary-600 bg-gray-200 rounded-lg'
                     : 'text-neutral-500 hover:text-neutral-700'
@@ -328,7 +328,7 @@ export function MemberProfile() {
               </button>
               <button
                 onClick={() => setActiveTab('prayers')}
-                className={`py-3 px-6 my-3 font-semibold text-sm transition-all relative ${
+                className={`py-2.5 px-4 sm:px-6 my-1 font-semibold text-sm transition-all relative whitespace-nowrap ${
                   activeTab === 'prayers'
                     ? 'text-primary-600 text-primary-600 bg-gray-200 rounded-lg'
                     : 'text-neutral-500 hover:text-neutral-700'
@@ -348,11 +348,11 @@ export function MemberProfile() {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {/* Attendance Tab */}
             {activeTab === 'attendance' && (
               <div>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
                   <h3 className="text-neutral-900 font-semibold">Attendance Records</h3>
                   <span className="text-sm text-neutral-500 font-medium">
                     {attendance.length} total records
@@ -361,7 +361,7 @@ export function MemberProfile() {
                 {attendance.length > 0 ? (
                   <div className="space-y-2.5">
                     {attendance.map((att) => (
-                      <div key={att.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors">
+                      <div key={att.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors">
                         <div className="flex items-center gap-3.5">
                           {att.status === 'present' ? (
                             <div className="w-10 h-10 bg-success-100 rounded-xl flex items-center justify-center">
@@ -407,7 +407,7 @@ export function MemberProfile() {
             {/* Donations Tab */}
             {activeTab === 'donations' && (
               <div>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
                   <h3 className="text-neutral-900 font-semibold">Donation History</h3>
                   <div className="text-right">
                     <p className="text-sm text-neutral-500 font-medium">{donations.length} donations</p>
@@ -417,7 +417,7 @@ export function MemberProfile() {
                 {donations.length > 0 ? (
                   <div className="space-y-2.5">
                     {donations.map((don) => (
-                      <div key={don.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors">
+                      <div key={don.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-neutral-50 rounded-xl hover:bg-neutral-100 transition-colors">
                         <div className="flex items-center gap-3.5">
                           <div className="w-10 h-10 bg-success-100 rounded-xl flex items-center justify-center">
                             <DollarSign className="w-5 h-5 text-success-600" />
@@ -453,7 +453,7 @@ export function MemberProfile() {
             {/* Prayer Requests Tab */}
             {activeTab === 'prayers' && (
               <div>
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
                   <h3 className="text-neutral-900 font-semibold">Prayer Requests</h3>
                   <button
                     onClick={() => setShowAddPrayer(!showAddPrayer)}
@@ -466,7 +466,7 @@ export function MemberProfile() {
 
                 {/* Add Prayer Form */}
                 {showAddPrayer && (
-                  <div className="mb-5 p-5 bg-gray-50 rounded-xl border border-primary-200">
+                  <div className="mb-5 p-4 sm:p-5 bg-gray-50 rounded-xl border border-primary-200">
                     <h4 className="text-neutral-900 font-semibold mb-4 text-base">New Prayer Request</h4>
                     <div className="space-y-3.5">
                       <div>
@@ -489,7 +489,7 @@ export function MemberProfile() {
                           placeholder="Detailed description of the prayer need"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         <div>
                           <label className="block text-sm text-neutral-700 font-semibold mb-2">Priority</label>
                           <select
@@ -514,7 +514,7 @@ export function MemberProfile() {
                           />
                         </div>
                       </div>
-                      <div className="flex gap-2.5 pt-1">
+                      <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                         <button
                           onClick={handleAddPrayer}
                           className="px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-semibold text-sm"
@@ -539,7 +539,7 @@ export function MemberProfile() {
                   <div className="space-y-3">
                     {prayerRequests.map((prayer) => (
                       <div key={prayer.id} className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 hover:border-primary-300 transition-colors">
-                        <div className="flex items-start justify-between mb-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2.5">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="text-neutral-900 font-semibold text-[15px]">{prayer.title}</h4>
@@ -565,7 +565,7 @@ export function MemberProfile() {
                           </div>
                           
                           {prayer.status === 'active' && (
-                            <div className="flex gap-2 ml-3">
+                            <div className="flex gap-2 sm:ml-3">
                               <button
                                 onClick={() => updatePrayerStatus(prayer.id, 'answered')}
                                 className="p-2 bg-success-100 text-success-600 rounded-lg hover:bg-success-200 transition-colors"

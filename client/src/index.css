@@ -50,6 +50,15 @@
 }
 
 @layer components {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   .bg-white.rounded-xl.border,
   .bg-white.rounded-2xl.border,
   .bg-white.rounded-xl.shadow-sm.border {
@@ -208,5 +217,12 @@
   html.dark textarea:focus {
     border-color: rgba(34, 211, 238, 0.45) !important;
     box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16) !important;
+  }
+
+  @media (max-width: 640px) {
+    table th,
+    table td {
+      font-size: 0.8125rem;
+    }
   }
 }

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../contexts/ConfirmContext';
 import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
-import { fetchMembers, fetchSettings, sendSmsBroadcast } from '../api/backend';
+import { fetchMembers, fetchSettings, fetchSmsLogs, sendSmsBroadcast } from '../api/backend';
 import { 
   MessageSquare, 
   Send, 
@@ -66,7 +66,14 @@ export function Messaging() {
       setDepartments(Array.from(new Set(memberData.map((m) => m.department))).filter(Boolean));
     }
 
-    setSmsLogs(JSON.parse(localStorage.getItem('cms_sms_logs') || '[]'));
+    const [backendLogs] = await Promise.all([fetchSmsLogs()]);
+    const localLogs: SMSLog[] = JSON.parse(localStorage.getItem('cms_sms_logs') || '[]');
+    const mergedLogs = [...backendLogs];
+    const existingIds = new Set(backendLogs.map((log) => log.id));
+    localLogs.forEach((log) => {
+      if (!existingIds.has(log.id)) mergedLogs.push(log);
+    });
+    setSmsLogs(mergedLogs);
     setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
 
     // Simulate auto birthday check from live member data
@@ -148,16 +155,16 @@ export function Messaging() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">SMS Messaging & Communication</h1>
-            <p className="text-neutral-600">Manage SMS notifications and message templates</p>
+            <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">SMS Messaging & Communication</h1>
+            <p className="text-neutral-600 text-sm sm:text-base">Manage SMS notifications and message templates</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="border border-gray-200 bg-white from-info-500 to-info-600 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-2">
               <MessageSquare className="w-8 h-8 text-gray-500" />
@@ -193,11 +200,11 @@ export function Messaging() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-        <div className="border-b border-neutral-200 px-6 py-4">
-          <div className="flex items-center gap-2">
+        <div className="border-b border-neutral-200 px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveTab('logs')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === 'logs'
                   ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
@@ -207,7 +214,7 @@ export function Messaging() {
             </button>
             <button
               onClick={() => setActiveTab('templates')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === 'templates'
                   ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
@@ -217,7 +224,7 @@ export function Messaging() {
             </button>
             <button
               onClick={() => setActiveTab('send')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === 'send'
                   ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
@@ -298,11 +305,11 @@ function SMSLogsTab({
 }) {
   return (
     <div className="p-6">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as any)}
-          className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full sm:w-auto px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           <option value="all">All Status</option>
           <option value="sent">Sent</option>
@@ -313,7 +320,7 @@ function SMSLogsTab({
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value as any)}
-          className="px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full sm:w-auto px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           <option value="all">All Types</option>
           <option value="program_reminder">Program Reminder</option>
@@ -322,11 +329,50 @@ function SMSLogsTab({
           <option value="announcement">Announcement</option>
         </select>
 
-        <div className="flex-1"></div>
-        <p className="text-sm text-neutral-600">Showing {logs.length} messages</p>
+        <div className="hidden sm:block flex-1"></div>
+        <p className="text-xs sm:text-sm text-neutral-600">Showing {logs.length} messages</p>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="md:hidden space-y-3">
+        {logs.map((log) => (
+          <div key={log.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-neutral-900">{log.recipientName}</p>
+                <p className="text-xs text-neutral-500">{log.recipientPhone}</p>
+              </div>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-neutral-100 text-neutral-700 capitalize">
+                {log.type.replace('_', ' ')}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-neutral-700">{log.message}</p>
+            <div className="mt-2 space-y-1">
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs ${
+                log.status === 'sent' 
+                  ? 'bg-success-50 text-success-700'
+                  : log.status === 'pending'
+                  ? 'bg-warning-50 text-warning-700'
+                  : 'bg-danger-50 text-danger-700'
+              }`}>
+                {log.status === 'sent' && <CheckCircle2 className="w-3 h-3" />}
+                {log.status === 'pending' && <Clock className="w-3 h-3" />}
+                {log.status === 'failed' && <XCircle className="w-3 h-3" />}
+                {log.status}
+              </span>
+              {log.status === 'failed' && log.failureReason && (
+                <div className="text-xs text-danger-600 flex items-start gap-1">
+                  <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  <span className="break-words">{log.failureReason}</span>
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">
+              {log.sentAt ? new Date(log.sentAt).toLocaleString() : '-'}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead className="bg-neutral-50 border-b border-neutral-200">
             <tr>
@@ -355,7 +401,7 @@ function SMSLogsTab({
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
+                  <div className="space-y-1">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs ${
                       log.status === 'sent' 
                         ? 'bg-success-50 text-success-700'
@@ -369,9 +415,10 @@ function SMSLogsTab({
                       {log.status}
                     </span>
                     {log.status === 'failed' && log.failureReason && (
-                      <span className="text-xs text-danger-600" title={log.failureReason}>
-                        <AlertTriangle className="w-3 h-3" />
-                      </span>
+                      <div className="text-xs text-danger-600 flex items-start gap-1">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        <span className="break-words">{log.failureReason}</span>
+                      </div>
                     )}
                   </div>
                 </td>
@@ -527,13 +574,27 @@ function SendMessageTab({
   toast: { success: (message: string) => void; error: (message: string) => void; info: (message: string) => void };
   onSend: (logs: SMSLog[]) => void;
 }) {
-  const [audience, setAudience] = useState<'all' | 'department' | 'selected'>('all');
+  const [audience, setAudience] = useState<'all' | 'department' | 'selected' | 'manual'>('all');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [manualNumbers, setManualNumbers] = useState('');
   const [message, setMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
 
+  const parseManualRecipients = () => {
+    const rawValues = manualNumbers
+      .split(/[\n,;\t ]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const unique = Array.from(new Set(rawValues));
+    return unique.map((phone) => ({
+      name: phone,
+      phone,
+    }));
+  };
+
   const getRecipients = () => {
+    if (audience === 'manual') return parseManualRecipients();
     if (audience === 'all') return members;
     if (audience === 'department') return members.filter(m => m.department === selectedDepartment);
     return members.filter(m => selectedMembers.includes(m.id));
@@ -555,11 +616,17 @@ function SendMessageTab({
     try {
       const result = await sendSmsBroadcast({
         message,
-        recipients: recipients.map((member) => ({
-          memberId: member.id,
-          name: member.fullName,
-          phone: member.phoneNumber,
-        })),
+        recipients:
+          audience === 'manual'
+            ? recipients.map((recipient) => ({
+                name: recipient.name,
+                phone: recipient.phone,
+              }))
+            : recipients.map((member) => ({
+                memberId: member.id,
+                name: member.fullName,
+                phone: member.phoneNumber,
+              })),
       });
 
       const newLogs = result.logs as SMSLog[];
@@ -666,6 +733,31 @@ function SendMessageTab({
               <div className="flex-1">
                 <p className="text-sm text-neutral-900">Selected Members</p>
                 <p className="text-xs text-neutral-500">{selectedMembers.length} selected</p>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 p-4 border border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-50 transition-colors">
+              <input
+                type="radio"
+                name="audience"
+                value="manual"
+                checked={audience === 'manual'}
+                onChange={(e) => setAudience(e.target.value as any)}
+                className="w-4 h-4 text-primary-600"
+              />
+              <div className="flex-1">
+                <p className="text-sm text-neutral-900">Manual Numbers</p>
+                <p className="text-xs text-neutral-500">Type numbers directly</p>
+                {audience === 'manual' && (
+                  <textarea
+                    value={manualNumbers}
+                    onChange={(e) => setManualNumbers(e.target.value)}
+                    className="mt-2 w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm"
+                    rows={4}
+                    placeholder="Enter numbers separated by comma, space, or new line (e.g. 233208597629)"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )}
               </div>
             </label>
           </div>

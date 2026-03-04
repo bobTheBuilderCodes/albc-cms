@@ -208,45 +208,45 @@ export default function Dashboard() {
   const hasGraphData = graphData.some((entry) => Object.values(entry).some((value) => typeof value === "number" && value > 0));
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Dashboard Overview</h1>
-        <p className="text-neutral-600 font-medium">Welcome to your church management system</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">Dashboard Overview</h1>
+        <p className="text-neutral-600 text-sm sm:text-base font-medium">Welcome to your church management system</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
         <div
           onClick={() => navigate("/members")}
-          className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-primary-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary-500/10"
+          className="group bg-white rounded-2xl p-4 sm:p-6 border border-neutral-200 hover:border-primary-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary-500/10"
         >
-          <p className="text-3xl text-neutral-900 mb-1 font-bold">{members.length}</p>
+          <p className="text-2xl sm:text-3xl text-neutral-900 mb-1 font-bold">{members.length}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Total Members</p>
           <p className="text-xs text-neutral-500 font-medium">{activeMembers} active members</p>
         </div>
 
         <div
           onClick={() => navigate("/attendance")}
-          className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-accent-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-accent-500/10"
+          className="group bg-white rounded-2xl p-4 sm:p-6 border border-neutral-200 hover:border-accent-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-accent-500/10"
         >
-          <p className="text-3xl text-neutral-900 mb-1 font-bold">{averageAttendanceRate.toFixed(0)}%</p>
+          <p className="text-2xl sm:text-3xl text-neutral-900 mb-1 font-bold">{averageAttendanceRate.toFixed(0)}%</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Average Attendance</p>
           <p className="text-xs text-neutral-500 font-medium">{Math.round(averagePresentPerSunday)} avg present / Sunday</p>
         </div>
 
         <div
           onClick={() => navigate("/finance")}
-          className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-success-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-success-500/10"
+          className="group bg-white rounded-2xl p-4 sm:p-6 border border-neutral-200 hover:border-success-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-success-500/10"
         >
-          <p className="text-3xl text-neutral-900 mb-1 font-bold">GH₵ {totalDonations.toLocaleString()}</p>
+          <p className="text-2xl sm:text-3xl text-neutral-900 mb-1 font-bold">GH₵ {totalDonations.toLocaleString()}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Total Income</p>
           <p className="text-xs text-neutral-500 font-medium">{donations.length} transactions</p>
         </div>
 
         <div
           onClick={() => navigate("/finance")}
-          className="group bg-white rounded-2xl p-6 border border-neutral-200 hover:border-danger-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-danger-500/10"
+          className="group bg-white rounded-2xl p-4 sm:p-6 border border-neutral-200 hover:border-danger-300 cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-danger-500/10"
         >
-          <p className="text-3xl text-neutral-900 mb-1 font-bold">GH₵ {totalExpenditures.toLocaleString()}</p>
+          <p className="text-2xl sm:text-3xl text-neutral-900 mb-1 font-bold">GH₵ {totalExpenditures.toLocaleString()}</p>
           <p className="text-sm text-neutral-600 font-medium mb-2">Total Expenses</p>
           <p className="text-xs text-neutral-500 font-medium">{expenditures.length} transactions</p>
         </div>

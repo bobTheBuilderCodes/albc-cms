@@ -15,7 +15,7 @@ const defaults = {
   memberAddedNotificationTemplate:
     "Hello {{member_name}}, welcome to our church family. Your membership profile has been created successfully. - {{church_name}}",
   donationNotificationTemplate:
-    "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
+    "Hello {{member_name}},\nA new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
   userAddedNotificationTemplate:
     "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}",
 };
@@ -84,10 +84,10 @@ export function NotificationsConfiguration() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 mb-0">Notifications Configuration</h1>
-        <p className="text-neutral-600">Configure the messages used for system email notifications</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-0">Notifications Configuration</h1>
+        <p className="text-neutral-600 text-sm sm:text-base">Configure the messages used for system email notifications</p>
       </div>
 
       <div className="space-y-6 pb-24">
@@ -117,7 +117,7 @@ export function NotificationsConfiguration() {
           onToggle={(value) => setSettings((prev) => ({ ...prev, enableDonationNotifications: value }))}
           template={settings.donationNotificationTemplate || ""}
           onTemplate={(value) => setSettings((prev) => ({ ...prev, donationNotificationTemplate: value }))}
-          variables="{{entry_type}}, {{amount}}, {{note}}, {{church_name}}"
+          variables="{{member_name}}, {{entry_type}}, {{amount}}, {{note}}, {{church_name}}"
         />
 
         <NotificationCard
@@ -136,7 +136,7 @@ export function NotificationsConfiguration() {
             ? "bg-slate-950/90 border-t border-transparent"
             : "bg-white border-t border-neutral-200"
         } ${
-          isCollapsed ? "left-20" : "left-72"
+          isCollapsed ? "left-0 md:left-20" : "left-0 md:left-72"
         }`}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-end">

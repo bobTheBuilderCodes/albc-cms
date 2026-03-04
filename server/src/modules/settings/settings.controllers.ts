@@ -3,14 +3,14 @@ import Settings from "./settings.model";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { HttpError } from "../../utils/httpError";
 import { ensureString, isDefined } from "../../utils/validators";
-import { emailService } from "../../services/email.service";
+import { buildBrandedEmail, emailService } from "../../services/email.service";
 
 const defaultProgramNotificationTemplate =
   "A new church program has been added.\nProgram: {{program_title}}\nDate: {{program_date}}\nLocation: {{program_location}}\nDetails: {{program_description}}\n- {{church_name}}";
 const defaultMemberAddedNotificationTemplate =
   "Hello {{member_name}}, welcome to our church family. Your membership profile has been created successfully. - {{church_name}}";
 const defaultDonationNotificationTemplate =
-  "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}";
+  "Hello {{member_name}},\nA new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}";
 const defaultUserAddedNotificationTemplate =
   "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}";
 
@@ -167,10 +167,20 @@ export const sendTestEmail = asyncHandler(async (req: Request, res: Response) =>
     );
   }
 
+  const settings = await Settings.findOne().select("churchName");
+  const churchName = settings?.churchName || "Church";
+  const text = `SMTP is configured and sending successfully from ${churchName}.`;
+
   await emailService.send({
     to,
     subject: "ChurchCMS SMTP Test",
-    text: "SMTP is configured and sending successfully from ChurchCMS.",
+    text,
+    html: buildBrandedEmail({
+      churchName,
+      title: "SMTP Test Successful",
+      message: text,
+      previewText: `${churchName} SMTP test email`,
+    }),
   });
 
   res.json({ success: true, message: `Test email sent to ${to}` });

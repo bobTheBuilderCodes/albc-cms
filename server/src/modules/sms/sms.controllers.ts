@@ -4,6 +4,8 @@ import { asyncHandler } from "../../utils/asyncHandler";
 import { HttpError } from "../../utils/httpError";
 import { ensureString } from "../../utils/validators";
 import { sendArkeselSMS } from "../../services/arkesel.service";
+import { env } from "../../config/env";
+import { createSmsLog, listSmsLogs, mapSmsLog } from "../../services/sms-log.service";
 
 type RecipientInput = {
   memberId?: string;
@@ -12,13 +14,14 @@ type RecipientInput = {
 };
 
 const normalizePhone = (phone: string): string => {
-  const trimmed = phone.trim();
+  const trimmed = phone.trim().replace(/\s+/g, "");
   if (!trimmed) return "";
 
-  if (trimmed.startsWith("+")) return trimmed;
-  if (trimmed.startsWith("0")) return `+233${trimmed.slice(1)}`;
-  if (trimmed.startsWith("233")) return `+${trimmed}`;
-  return trimmed;
+  const digitsOnly = trimmed.replace(/[^\d+]/g, "");
+  const withoutPlus = digitsOnly.startsWith("+") ? digitsOnly.slice(1) : digitsOnly;
+  if (withoutPlus.startsWith("0")) return `233${withoutPlus.slice(1)}`;
+  if (withoutPlus.startsWith("233")) return withoutPlus;
+  return withoutPlus;
 };
 
 export const sendSms = asyncHandler(async (req: Request, res: Response) => {
@@ -40,12 +43,12 @@ export const sendSms = asyncHandler(async (req: Request, res: Response) => {
     throw new HttpError(400, "SMS provider is not configured to Arkesel");
   }
 
-  const apiKey = String(settings.smsApiKey || "").trim();
+  const apiKey = String(settings.smsApiKey || env.ARKESEL_API_KEY || "").trim();
   if (!apiKey) {
-    throw new HttpError(400, "Arkesel API key is missing in Settings");
+    throw new HttpError(400, "Arkesel API key is missing in Settings and env");
   }
 
-  const senderId = String(settings.smsSenderId || sender);
+  const senderId = String(settings.smsSenderId || env.ARKESEL_SENDER_ID || sender).trim();
 
   const normalizedRecipients = recipients
     .map((r) => ({
@@ -58,35 +61,64 @@ export const sendSms = asyncHandler(async (req: Request, res: Response) => {
     throw new HttpError(400, "No valid recipient phone numbers found");
   }
 
-  const sendResult = await sendArkeselSMS({
-    apiKey,
-    sender: senderId,
-    message,
-    recipients: normalizedRecipients.map((r) => r.phone),
-  });
-
-  const logs = normalizedRecipients.map((recipient) => ({
-    id: `sms-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-    recipientId: recipient.memberId || recipient.phone,
-    recipientName: recipient.name || recipient.phone,
-    recipientPhone: recipient.phone,
-    message,
-    type: "manual",
-    status: "sent",
-    sentAt: new Date().toISOString(),
-    createdBy: req.user?.id || "system",
-    createdAt: new Date().toISOString(),
-  }));
-
-  res.status(201).json({
-    success: true,
-    data: {
-      provider: "arkesel",
+  try {
+    const sendResult = await sendArkeselSMS({
+      apiKey,
       sender: senderId,
       message,
-      recipients: normalizedRecipients.length,
-      logs,
-      upstream: sendResult,
-    },
+      recipients: normalizedRecipients.map((r) => r.phone),
+    });
+
+    const savedLogs = await Promise.all(
+      normalizedRecipients.map((recipient) =>
+        createSmsLog({
+          recipientId: recipient.memberId || recipient.phone,
+          recipientName: recipient.name || recipient.phone,
+          recipientPhone: recipient.phone,
+          message,
+          type: "manual",
+          status: "sent",
+          sentAt: new Date(),
+          createdBy: req.user?.id || "system",
+        })
+      )
+    );
+
+    res.status(201).json({
+      success: true,
+      data: {
+        provider: "arkesel",
+        sender: senderId,
+        message,
+        recipients: normalizedRecipients.length,
+        logs: savedLogs.map(mapSmsLog),
+        upstream: sendResult,
+      },
+    });
+  } catch (error) {
+    const failureReason = error instanceof Error ? error.message : "SMS delivery failed";
+    await Promise.all(
+      normalizedRecipients.map((recipient) =>
+        createSmsLog({
+          recipientId: recipient.memberId || recipient.phone,
+          recipientName: recipient.name || recipient.phone,
+          recipientPhone: recipient.phone,
+          message,
+          type: "manual",
+          status: "failed",
+          failureReason,
+          createdBy: req.user?.id || "system",
+        })
+      )
+    );
+    throw new HttpError(502, `Arkesel delivery failed: ${failureReason}`);
+  }
+});
+
+export const getSmsLogs = asyncHandler(async (_req: Request, res: Response) => {
+  const logs = await listSmsLogs();
+  res.json({
+    success: true,
+    data: logs.map(mapSmsLog),
   });
 });

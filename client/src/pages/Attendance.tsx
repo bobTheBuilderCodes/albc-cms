@@ -189,17 +189,17 @@ export function Attendance() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Attendance Management</h1>
-            <p className="text-neutral-600">Track attendance for programs and Sunday services</p>
+            <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">Attendance Management</h1>
+            <p className="text-neutral-600 text-sm sm:text-base">Track attendance for programs and Sunday services</p>
           </div>
           {mode === "program" && (
             <button
               onClick={() => setShowMarkModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-all shadow-lg"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-all shadow-lg"
             >
               <Plus className="w-5 h-5" />
               Mark Program Attendance
@@ -211,7 +211,7 @@ export function Attendance() {
 
       {mode === "program" && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div className="border border-gray-200 p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
               <div className="flex items-center justify-between mb-2">
                 <UserCheck className="w-8 h-8 text-gray-500" />
@@ -246,16 +246,16 @@ export function Attendance() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-            <div className="border-b border-neutral-200 px-6 py-4">
-              <div className="flex items-center gap-2">
+            <div className="border-b border-neutral-200 px-4 sm:px-6 py-3 sm:py-4">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                 <button
-                  className="px-4 py-2 rounded-lg transition-colors bg-gray-200 text-primary-700"
+                  className="px-4 py-2 rounded-lg transition-colors bg-gray-200 text-primary-700 whitespace-nowrap"
                   onClick={() => setMode("program")}
                 >
                   Program Attendance
                 </button>
                 <button
-                  className="px-4 py-2 rounded-lg transition-colors text-neutral-600 hover:bg-neutral-100"
+                  className="px-4 py-2 rounded-lg transition-colors text-neutral-600 hover:bg-neutral-100 whitespace-nowrap"
                   onClick={() => setMode("sunday")}
                 >
                   Sunday Services
@@ -263,8 +263,8 @@ export function Attendance() {
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 mb-6">
                 <div className="flex-1">
                   <label className="block text-sm text-neutral-700 mb-2">Select Program</label>
                   <select
@@ -284,7 +284,7 @@ export function Attendance() {
                 {selectedProgram && (
                   <button
                     onClick={exportAttendance}
-                    className="mt-6 flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
+                    className="w-full sm:w-auto sm:mt-6 flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
                   >
                     <Download className="w-4 h-4" />
                     Export
@@ -300,7 +300,38 @@ export function Attendance() {
                     </h3>
                   </div>
 
-                  <div className="overflow-x-auto">
+                  <div className="md:hidden space-y-3">
+                    {programAttendance.map((att) => {
+                      const member = members.find((m) => m.id === att.memberId);
+                      return (
+                        <div key={att.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-sm">{member?.fullName.charAt(0) || "?"}</span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm text-neutral-900 truncate">{member?.fullName || "Unknown"}</p>
+                                <p className="text-xs text-neutral-500">{new Date(att.date).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs ${
+                                att.status === "present" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"
+                              }`}
+                            >
+                              {att.status === "present" && <CheckCircle2 className="w-3 h-3" />}
+                              {att.status === "absent" && <XCircle className="w-3 h-3" />}
+                              {att.status}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-neutral-600">Notes: {att.notes || "-"}</p>
+                          <p className="mt-1 text-xs text-neutral-500">Recorded by: {att.recordedBy}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-neutral-50 border-b border-neutral-200">
                         <tr>
@@ -358,16 +389,16 @@ export function Attendance() {
 
       {mode === "sunday" && (
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
-          <div className="border-b border-neutral-200 px-6 py-4">
-            <div className="flex items-center gap-2">
+          <div className="border-b border-neutral-200 px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               <button
-                className="px-4 py-2 rounded-lg transition-colors text-neutral-600 hover:bg-neutral-100"
+                className="px-4 py-2 rounded-lg transition-colors text-neutral-600 hover:bg-neutral-100 whitespace-nowrap"
                 onClick={() => setMode("program")}
               >
                 Program Attendance
               </button>
               <button
-                className="px-4 py-2 rounded-lg transition-colors bg-gray-200 text-primary-700"
+                className="px-4 py-2 rounded-lg transition-colors bg-gray-200 text-primary-700 whitespace-nowrap"
                 onClick={() => setMode("sunday")}
               >
                 Sunday Services
@@ -375,8 +406,8 @@ export function Attendance() {
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
             <div>
               <label className="block text-sm text-neutral-700 mb-2">Year</label>
               <select
@@ -419,7 +450,7 @@ export function Attendance() {
             </div>
           </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
               <div className="border border-gray-200 dark:border-transparent p-4 rounded-xl">
                 <p className="text-2xl font-semibold">{sundayDates.length}</p>
                 <p className="text-sm text-neutral-500">Sundays in {selectedYear}</p>
@@ -444,7 +475,44 @@ export function Attendance() {
             {selectedSunday ? (
               <div className="overflow-x-auto">
                 {sundayFilteredMembers.length > 0 ? (
-                  <table className="w-full">
+                  <>
+                    <div className="md:hidden space-y-3">
+                      {sundayFilteredMembers.map((member) => {
+                        const status = sundayStatusByMember.get(member.id)?.status ?? "present";
+                        const disabled = savingMemberId === member.id;
+                        return (
+                          <div key={`${selectedSunday}-${member.id}`} className="border border-neutral-200 rounded-xl p-3 bg-white">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm text-neutral-900">{member.fullName}</p>
+                                <p className="text-xs text-neutral-600">{member.department || "General"}</p>
+                              </div>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs ${
+                                  status === "present" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                                }`}
+                              >
+                                {status === "present" ? "Present" : "Absent"}
+                              </span>
+                            </div>
+                            <button
+                              disabled={disabled || !canEditSelectedSunday}
+                              onClick={() => toggleSundayStatus(member.id)}
+                              className={`mt-3 w-full px-3 py-2 rounded-lg text-xs ${
+                                disabled || !canEditSelectedSunday
+                                  ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                                  : status === "present"
+                                  ? "bg-rose-600 text-white hover:bg-rose-700"
+                                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+                              } transition-colors`}
+                            >
+                              {disabled ? "Saving..." : !canEditSelectedSunday ? "Locked" : status === "present" ? "Mark Absent" : "Mark Present"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <table className="hidden md:table w-full">
                     <thead className="bg-neutral-50 border-b border-neutral-200">
                       <tr>
                         <th className="text-left px-4 py-3 text-sm text-neutral-700">Member</th>
@@ -489,7 +557,8 @@ export function Attendance() {
                         );
                       })}
                     </tbody>
-                  </table>
+                    </table>
+                  </>
                 ) : (
                   <div className="text-center py-12">
                     <Search className="w-10 h-10 text-neutral-300 mx-auto mb-3" />

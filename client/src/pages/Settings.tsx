@@ -255,10 +255,10 @@ export function Settings() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Settings</h1>
-        <p className="text-neutral-600">Manage your church management system settings</p>
+        <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">Settings</h1>
+        <p className="text-neutral-600">Configure church info</p>
       </div>
 
       <div className="space-y-6">
@@ -270,7 +270,7 @@ export function Settings() {
             </div>
             <div>
               <h3 className="text-neutral-900 font-semibold">Church Information</h3>
-              <p className="text-sm text-neutral-600">Basic information about your church</p>
+              <p className="text-sm text-neutral-600">Provide basic information</p>
             </div>
           </div>
 
@@ -325,7 +325,7 @@ export function Settings() {
             </div>
             <div>
               <h3 className="text-neutral-900 font-semibold">Notification Settings</h3>
-              <p className="text-sm text-neutral-600">Configure automatic SMS notifications</p>
+              <p className="text-sm text-neutral-600">Configure automatic SMS</p>
             </div>
           </div>
 
@@ -479,19 +479,11 @@ export function Settings() {
             </div>
             <div>
               <h3 className="text-neutral-900 font-semibold">SMS Gateway Configuration</h3>
-              <p className="text-sm text-neutral-600">Configure your SMS service provider</p>
+              <p className="text-sm text-neutral-600">Configure SMS service provider</p>
             </div>
           </div>
 
-          <div className="bg-warning-50 border border-warning-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-warning-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-warning-800">
-                <p className="font-semibold mb-1">Demo Mode</p>
-                <p>SMS integration requires a backend server. In this demo, SMS messages are simulated locally. For production, integrate with services like Arkesel or Twilio.</p>
-              </div>
-            </div>
-          </div>
+          
 
           <div className="space-y-4">
             <div>
@@ -556,7 +548,7 @@ export function Settings() {
             </div>
             <div>
               <h3 className="text-neutral-900 font-semibold">Department Management</h3>
-              <p className="text-sm text-neutral-600">Configure departments for member categorization</p>
+              <p className="text-sm text-neutral-600">Configure church departments</p>
             </div>
           </div>
 

@@ -87,23 +87,23 @@ export function Programs() {
   const pastPrograms = filteredPrograms.filter(p => new Date(p.date) < new Date());
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-0 text-2xl font-bold ">Church Programs & Events</h1>
-            <p className="text-neutral-600">Manage church programs and events</p>
+            <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold ">Church Programs & Events</h1>
+            <p className="text-neutral-600 text-sm sm:text-base">Manage church programs and events</p>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Add Program
           </button>
         </div>
 
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
           <div className="bg-white flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
@@ -115,10 +115,10 @@ export function Programs() {
             />
           </div>
 
-          <div className="flex items-center gap-2 bg-white border border-neutral-300 dark:border-transparent rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-white border border-neutral-300 dark:border-transparent rounded-lg p-1 w-full sm:w-auto">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-md transition-colors ${
                 viewMode === 'list'
                   ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
@@ -128,7 +128,7 @@ export function Programs() {
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-md transition-colors ${
                 viewMode === 'calendar'
                   ? 'bg-gray-200 text-primary-700'
                   : 'text-neutral-600 hover:bg-neutral-100'
@@ -145,7 +145,7 @@ export function Programs() {
           {/* Upcoming Programs */}
           <div>
             <h3 className="text-neutral-800 mb-4">Upcoming Programs ({upcomingPrograms.length})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {upcomingPrograms.map((program) => (
                 <ProgramCard
                   key={program.id}
@@ -167,7 +167,7 @@ export function Programs() {
           {pastPrograms.length > 0 && (
             <div>
               <h3 className="text-neutral-800 mb-4">Past Programs ({pastPrograms.length})</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {pastPrograms.slice(0, 4).map((program) => (
                   <ProgramCard
                     key={program.id}

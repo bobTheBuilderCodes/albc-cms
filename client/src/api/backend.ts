@@ -1,5 +1,5 @@
 import API from "./axios";
-import type { Attendance, ChurchProgram, Donation, Expenditure, Member, User } from "../types";
+import type { Attendance, ChurchProgram, Donation, Expenditure, Member, SMSLog, User } from "../types";
 import type { Notification } from "../types/notifications";
 
 type ApiEnvelope<T> = { success: boolean; data: T };
@@ -660,6 +660,21 @@ type ApiSmsSendResponse = {
   }>;
 };
 
+type ApiSmsLog = {
+  id: string;
+  recipientId: string;
+  recipientName: string;
+  recipientPhone: string;
+  message: string;
+  type: "program_reminder" | "birthday" | "manual" | "announcement";
+  status: "sent" | "failed" | "pending";
+  sentAt?: string;
+  failureReason?: string;
+  programId?: string;
+  createdBy: string;
+  createdAt: string;
+};
+
 export async function sendSmsBroadcast(payload: {
   message: string;
   recipients: SendSmsRecipient[];
@@ -667,6 +682,24 @@ export async function sendSmsBroadcast(payload: {
 }) {
   const res = await API.post<ApiEnvelope<ApiSmsSendResponse>>("/sms/send", payload);
   return res.data.data;
+}
+
+export async function fetchSmsLogs(): Promise<SMSLog[]> {
+  const res = await API.get<ApiEnvelope<ApiSmsLog[]>>("/sms/logs");
+  return res.data.data.map((log) => ({
+    id: log.id,
+    recipientId: log.recipientId,
+    recipientName: log.recipientName,
+    recipientPhone: log.recipientPhone,
+    message: log.message,
+    type: log.type,
+    status: log.status,
+    sentAt: log.sentAt,
+    failureReason: log.failureReason,
+    programId: log.programId,
+    createdBy: log.createdBy,
+    createdAt: log.createdAt,
+  }));
 }
 
 // ---------- In-app Notifications ----------

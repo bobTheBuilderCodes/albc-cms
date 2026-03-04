@@ -63,7 +63,7 @@ const settingsSchema = new Schema<ISettings>(
       type: String,
       trim: true,
       default:
-        "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
+        "Hello {{member_name}},\nA new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
     },
     userAddedNotificationTemplate: {
       type: String,

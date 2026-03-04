@@ -156,7 +156,42 @@ export function Donations() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="md:hidden space-y-3">
+          {filteredDonations.map((donation) => (
+            <div key={donation.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm text-neutral-900">{donation.memberName}</p>
+                  <p className="text-xs text-neutral-500">{new Date(donation.date).toLocaleDateString()}</p>
+                </div>
+                <p className="text-sm text-success-600">GH₵ {donation.amount.toFixed(2)}</p>
+              </div>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-gray-50 text-primary-700 capitalize">
+                  {donation.type}
+                </span>
+                <span className="text-xs text-neutral-600 capitalize">{donation.paymentMethod.replace('_', ' ')}</span>
+              </div>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setViewingReceipt(donation)}
+                  className="p-1.5 hover:bg-gray-50 text-primary-600 rounded-lg transition-colors"
+                  title="View Receipt"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => downloadReceipt(donation)}
+                  className="p-1.5 hover:bg-success-50 text-success-600 rounded-lg transition-colors"
+                  title="Download Receipt"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>

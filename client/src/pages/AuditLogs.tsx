@@ -210,7 +210,25 @@ export function AuditLogs() {
           </select>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="md:hidden space-y-3">
+          {currentLogs.map((log) => (
+            <div key={log.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-neutral-500">{new Date(log.timestamp).toLocaleString()}</p>
+                  <p className="text-sm text-neutral-900">{log.userName}</p>
+                  <p className="text-xs text-neutral-500 capitalize">{log.userRole}</p>
+                </div>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${getActionColor(log.action)}`}>
+                  {log.action.replace('_', ' ')}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-neutral-600 capitalize">{log.resourceType}</p>
+              <p className="mt-1 text-sm text-neutral-700">{log.details}</p>
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>

@@ -158,21 +158,21 @@ export function Members() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h1 className="text-neutral-900 mb-0 text-2xl font-bold">
+            <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">
               Member Management
             </h1>
-            <p className="text-neutral-600">
+            <p className="text-neutral-600 text-sm sm:text-base">
               Manage church members and their information
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={exportToCSV}
-              className="bg-white flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+              className="bg-white flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
             >
               <Download className="w-4 h-4" />
               Export CSV
@@ -180,14 +180,14 @@ export function Members() {
 
             <button
               onClick={() => setShowBulkUploadModal(true)}
-              className="bg-white flex items-center gap-2 px-4 py-2 border border-neutral-200 text-primary-600 rounded-lg hover:bg-gray-50 transition-colors"
+              className="bg-white flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-neutral-200 text-primary-600 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Upload className="w-5 h-5" />
               Bulk Upload
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg"
             >
               <Plus className="w-5 h-5" />
               Add Member
@@ -195,7 +195,7 @@ export function Members() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white md:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
@@ -233,23 +233,95 @@ export function Members() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="md:hidden p-3 space-y-3">
+          {currentMembers.length > 0 ? (
+            currentMembers.map((member) => (
+              <div key={member.id} className="rounded-xl border border-neutral-200 p-3 bg-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${getInitialGradientClass(member.fullName)}`}
+                    >
+                      <span className="text-gray-700 dark:text-white text-sm font-semibold">
+                        {member.fullName.charAt(0)}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-neutral-900 truncate">{member.fullName}</p>
+                      <p className="text-xs text-neutral-500 capitalize">{member.gender}</p>
+                    </div>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${
+                      member.membershipStatus === "active"
+                        ? "bg-success-50 text-success-700"
+                        : "bg-neutral-100 text-neutral-700"
+                    }`}
+                  >
+                    {member.membershipStatus}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1 text-xs text-neutral-600">
+                  <p className="truncate">{member.email}</p>
+                  <p>{member.phoneNumber}</p>
+                  <p>{member.department}</p>
+                </div>
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => navigate(`/members/${member.id}`)}
+                    className="p-2 text-info-600 hover:bg-info-50 rounded-lg transition-colors"
+                    title="View Profile"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setEditingMember(member)}
+                    className="p-2 text-primary-600 hover:bg-gray-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteMember(member.id)}
+                    className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-10 text-center">
+              <Search className="w-8 h-8 text-neutral-300 mx-auto mb-2" />
+              <p className="text-sm text-neutral-700 font-medium">
+                {searchQuery ? "No members match your search" : "No members found"}
+              </p>
+              <p className="text-xs text-neutral-500">
+                {searchQuery
+                  ? "Try a different name, email, or phone number."
+                  : "Add members to see them listed here."}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
                 <th className="text-left px-6 py-3 text-sm text-neutral-700">
                   Member
                 </th>
-                <th className="text-left px-6 py-3 text-sm text-neutral-700">
+                <th className="hidden md:table-cell text-left px-6 py-3 text-sm text-neutral-700">
                   Contact
                 </th>
-                <th className="text-left px-6 py-3 text-sm text-neutral-700">
+                <th className="hidden lg:table-cell text-left px-6 py-3 text-sm text-neutral-700">
                   Department
                 </th>
                 <th className="text-left px-6 py-3 text-sm text-neutral-700">
                   Status
                 </th>
-                <th className="text-left px-6 py-3 text-sm text-neutral-700">
+                <th className="hidden md:table-cell text-left px-6 py-3 text-sm text-neutral-700">
                   Join Date
                 </th>
                 <th className="text-right px-6 py-3 text-sm text-neutral-700">
@@ -283,7 +355,7 @@ export function Members() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden md:table-cell px-6 py-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-sm text-neutral-700">
                           <Mail className="w-4 h-4 text-neutral-400" />
@@ -295,7 +367,7 @@ export function Members() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden lg:table-cell px-6 py-4">
                       <span className="text-sm text-neutral-700">
                         {member.department}
                       </span>
@@ -311,7 +383,7 @@ export function Members() {
                         {member.membershipStatus}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden md:table-cell px-6 py-4">
                       <span className="text-sm text-neutral-700">
                         {new Date(member.joinDate).toLocaleDateString()}
                       </span>
@@ -948,9 +1020,30 @@ function BulkUploadModal({
               <h4 className="text-sm text-neutral-900 font-semibold mb-3">
                 Preview ({previewData.length} members)
               </h4>
-              <div className="border border-neutral-200 rounded-lg overflow-hidden">
+        <div className="border border-neutral-200 rounded-lg overflow-hidden">
                 <div className="max-h-64 overflow-y-auto">
-                  <table className="w-full text-sm">
+                  <div className="md:hidden p-3 space-y-2">
+                    {previewData.slice(0, 10).map((member, index) => (
+                      <div key={index} className="rounded-lg border border-neutral-200 p-2.5">
+                        <p className="text-sm text-neutral-900">{member.fullName}</p>
+                        <p className="text-xs text-neutral-600">{member.email}</p>
+                        <p className="text-xs text-neutral-600">{member.phoneNumber}</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="text-xs text-neutral-600">{member.department}</span>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
+                              member.membershipStatus === "active"
+                                ? "bg-success-50 text-success-700"
+                                : "bg-neutral-100 text-neutral-700"
+                            }`}
+                          >
+                            {member.membershipStatus}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <table className="hidden md:table w-full text-sm">
                     <thead className="bg-neutral-50 border-b border-neutral-200 sticky top-0">
                       <tr>
                         <th className="text-left px-3 py-2 text-xs text-neutral-700">

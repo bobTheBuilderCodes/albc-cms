@@ -1,14 +1,13 @@
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { SidebarProvider } from '../contexts/SidebarContext';
+import { SidebarProvider, useSidebar } from '../contexts/SidebarContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 export function Root() {
   const { isAuthenticated, isLoading } = useAuth();
-  const { theme } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,21 +33,37 @@ export function Root() {
 
   return (
     <SidebarProvider>
-      <div
-        className={`flex h-screen ${
-          theme === "dark"
-            ? "bg-[radial-gradient(circle_at_top_right,_#111827_0%,_#0b1220_35%,_#0f172a_100%)]"
-            : "bg-[radial-gradient(circle_at_top_right,_#dbeafe_0%,_#f8fafc_35%,_#e0f2fe_100%)]"
-        }`}
-      >
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto bg-transparent">
-            <Outlet />
-          </main>
-        </div>
-      </div>
+      <Shell />
     </SidebarProvider>
+  );
+}
+
+function Shell() {
+  const { isMobileOpen, closeMobileSidebar } = useSidebar();
+  const { theme } = useTheme();
+
+  return (
+    <div
+      className={`relative flex h-screen ${
+        theme === "dark"
+          ? "bg-[radial-gradient(circle_at_top_right,_#111827_0%,_#0b1220_35%,_#0f172a_100%)]"
+          : "bg-[radial-gradient(circle_at_top_right,_#dbeafe_0%,_#f8fafc_35%,_#e0f2fe_100%)]"
+      }`}
+    >
+      {isMobileOpen && (
+        <button
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={closeMobileSidebar}
+        />
+      )}
+      <Sidebar />
+      <div className="flex-1 flex min-w-0 flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-y-auto bg-transparent">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   );
 }

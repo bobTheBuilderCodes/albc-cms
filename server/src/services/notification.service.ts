@@ -6,7 +6,10 @@ import InAppNotification, {
   InAppNotificationType,
 } from "../modules/notifications/in-app-notification.model";
 import { Program } from "../modules/programs/programs.model";
-import { emailService } from "./email.service";
+import { buildBrandedEmail, emailService } from "./email.service";
+import { sendArkeselSMS } from "./arkesel.service";
+import { env } from "../config/env";
+import { createSmsLog } from "./sms-log.service";
 
 type FinanceNotificationInput = {
   type: string;
@@ -63,6 +66,16 @@ const applyTemplate = (template: string, replacements: Record<string, string>): 
   }, template);
 };
 
+const normalizePhoneForArkesel = (phone: string): string => {
+  const cleaned = String(phone || "").trim().replace(/\s+/g, "");
+  if (!cleaned) return "";
+  const digits = cleaned.replace(/[^\d+]/g, "");
+  const withoutPlus = digits.startsWith("+") ? digits.slice(1) : digits;
+  if (withoutPlus.startsWith("0")) return `233${withoutPlus.slice(1)}`;
+  if (withoutPlus.startsWith("233")) return withoutPlus;
+  return withoutPlus;
+};
+
 const getUserEmails = async (): Promise<string[]> => {
   const users = await User.find({ isActive: true }).select("email");
   return users.map((user) => String(user.email || "").trim()).filter(Boolean);
@@ -109,11 +122,15 @@ const safeSend = async (task: () => Promise<void>, label: string): Promise<void>
 
 const getNotificationConfig = async () => {
   const settings = await Settings.findOne().select(
-    "churchName enableBirthdayNotifications birthdayMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
+    "churchName smsEnabled smsProvider smsApiKey smsSenderId enableBirthdayNotifications birthdayMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
   );
 
   return {
     churchName: settings?.churchName || "Church",
+    smsEnabled: settings?.smsEnabled ?? false,
+    smsProvider: String(settings?.smsProvider || "arkesel").toLowerCase(),
+    smsApiKey: String(settings?.smsApiKey || env.ARKESEL_API_KEY || "").trim(),
+    smsSenderId: String(settings?.smsSenderId || env.ARKESEL_SENDER_ID || "").trim(),
     birthday: settings?.enableBirthdayNotifications ?? true,
     birthdayMessageTemplate:
       settings?.birthdayMessageTemplate ||
@@ -132,7 +149,7 @@ const getNotificationConfig = async () => {
       "Hello {{member_name}}, welcome to our church family. Your membership profile has been created successfully. - {{church_name}}",
     donationNotificationTemplate:
       settings?.donationNotificationTemplate ||
-      "A new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
+      "Hello {{member_name}},\nA new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}",
     userAddedNotificationTemplate:
       settings?.userAddedNotificationTemplate ||
       "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}",
@@ -170,11 +187,53 @@ export const notificationService = {
       () =>
         emailService.send({
           to: recipient,
-          subject: "Welcome to ChurchCMS",
+          subject: `Welcome to ${config.churchName}`,
           text: message,
+          html: buildBrandedEmail({
+            churchName: config.churchName,
+            title: "Welcome to the Church Family",
+            message,
+            previewText: `Welcome to ${config.churchName}`,
+          }),
         }),
       "member welcome"
     );
+
+    const smsPhone = normalizePhoneForArkesel(String(member.phone || ""));
+    if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsApiKey && config.smsSenderId && smsPhone) {
+      try {
+        await sendArkeselSMS({
+          apiKey: config.smsApiKey,
+          sender: config.smsSenderId,
+          message,
+          recipients: [smsPhone],
+        });
+
+        await createSmsLog({
+          recipientId: String(member._id || smsPhone),
+          recipientName: name || smsPhone,
+          recipientPhone: smsPhone,
+          message,
+          type: "announcement",
+          status: "sent",
+          sentAt: new Date(),
+          createdBy: "system",
+        });
+      } catch (error) {
+        const failureReason = error instanceof Error ? error.message : "SMS delivery failed";
+        await createSmsLog({
+          recipientId: String(member._id || smsPhone),
+          recipientName: name || smsPhone,
+          recipientPhone: smsPhone,
+          message,
+          type: "announcement",
+          status: "failed",
+          failureReason,
+          createdBy: "system",
+        });
+        console.error("Notification send failed: member welcome sms", error);
+      }
+    }
   },
 
   async sendFinanceEntryNotification(payload: FinanceNotificationInput): Promise<void> {
@@ -216,6 +275,12 @@ export const notificationService = {
           to: recipients,
           subject: `New Finance Entry: ${entryType}`,
           text: message,
+          html: buildBrandedEmail({
+            churchName: config.churchName,
+            title: isIncome ? "Income Received" : "New Expenditure Recorded",
+            message,
+            previewText: `${entryType} notification from ${config.churchName}`,
+          }),
         }),
       "finance entry"
     );
@@ -253,6 +318,12 @@ export const notificationService = {
           to: recipients,
           subject: `New Church Program: ${payload.title}`,
           text: message,
+          html: buildBrandedEmail({
+            churchName: config.churchName,
+            title: "New Program Announcement",
+            message,
+            previewText: `${payload.title} at ${config.churchName}`,
+          }),
         }),
       "program created"
     );
@@ -276,6 +347,13 @@ export const notificationService = {
           to: user.email,
           subject: "Your ChurchCMS Account Credentials",
           text: message,
+          html: buildBrandedEmail({
+            churchName: config.churchName,
+            title: "Your Account Details",
+            message,
+            previewText: `${config.churchName} account credentials`,
+            footerNote: "For security, change your password immediately after logging in.",
+          }),
         }),
       "user created credentials"
     );
@@ -346,6 +424,12 @@ export const notificationService = {
               to: others,
               subject: `Wish ${fullName} a Happy Birthday`,
               text: `Today is ${fullName}'s birthday. Please send them your best wishes and prayers.`,
+              html: buildBrandedEmail({
+                churchName: config.churchName,
+                title: "Birthday Reminder",
+                message: `Today is ${fullName}'s birthday.\nPlease send your best wishes and prayers.`,
+                previewText: `${fullName}'s birthday at ${config.churchName}`,
+              }),
             }),
           "birthday broadcast"
         );
@@ -357,6 +441,12 @@ export const notificationService = {
             to: String(member.email),
             subject: `Happy Birthday, ${fullName}!`,
             text: celebrantMessage,
+            html: buildBrandedEmail({
+              churchName: config.churchName,
+              title: `Happy Birthday, ${fullName}!`,
+              message: celebrantMessage,
+              previewText: `Birthday wishes from ${config.churchName}`,
+            }),
           }),
         "birthday celebrant"
       );

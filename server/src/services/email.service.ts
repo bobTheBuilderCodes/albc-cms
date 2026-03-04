@@ -7,6 +7,74 @@ type EmailPayload = {
   html?: string;
 };
 
+type BrandedEmailOptions = {
+  churchName: string;
+  title: string;
+  message: string;
+  previewText?: string;
+  footerNote?: string;
+};
+
+const escapeHtml = (value: string): string =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const toHtmlMessage = (message: string): string =>
+  escapeHtml(message)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => `<p style="margin:0 0 12px;line-height:1.65;color:#334155;">${line}</p>`)
+    .join("");
+
+export const buildBrandedEmail = (options: BrandedEmailOptions): string => {
+  const churchName = options.churchName?.trim() || "Church";
+  const previewText = options.previewText || `${churchName} notification`;
+  const footerNote =
+    options.footerNote ||
+    "This message was sent automatically by your church management system.";
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>${escapeHtml(options.title)}</title>
+  </head>
+  <body style="margin:0;padding:24px;background:#eef2ff;font-family:Arial,'Segoe UI',sans-serif;color:#0f172a;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      ${escapeHtml(previewText)}
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 20px 40px rgba(15,23,42,0.12);">
+      <tr>
+        <td style="padding:0;background:linear-gradient(120deg,#1d4ed8 0%,#0e7490 100%);">
+          <div style="padding:28px 32px;">
+            <p style="margin:0 0 8px;color:#bfdbfe;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;">${escapeHtml(churchName)}</p>
+            <h1 style="margin:0;color:#ffffff;font-size:24px;line-height:1.3;font-weight:700;">${escapeHtml(options.title)}</h1>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px 32px 20px;background:#ffffff;">
+          ${toHtmlMessage(options.message)}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px 32px 30px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+          <p style="margin:0 0 6px;color:#475569;font-size:13px;">Regards,</p>
+          <p style="margin:0;color:#0f172a;font-size:14px;font-weight:700;">${escapeHtml(churchName)}</p>
+          <p style="margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6;">${escapeHtml(footerNote)}</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+};
+
 class EmailService {
   private transporter: any = null;
   private available = false;

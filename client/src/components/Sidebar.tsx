@@ -11,6 +11,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  X,
   UserCog,
   BellRing
 } from 'lucide-react';
@@ -34,7 +35,7 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, isMobileOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
   const { user } = useAuth();
   const { theme } = useTheme();
   const [churchName, setChurchName] = useState('ChurchCMS');
@@ -72,17 +73,19 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`${isCollapsed ? 'w-20' : 'w-72'} ${
+      className={`${isCollapsed ? 'md:w-20' : 'md:w-72'} w-72 ${
         theme === 'dark'
           ? 'bg-linear-to-b from-slate-950 via-slate-900 to-blue-950 border-r border-slate-800/80 shadow-xl shadow-slate-950/40'
           : 'bg-linear-to-b from-sky-50 via-white to-indigo-50 border-r border-sky-200/80 shadow-xl shadow-sky-200/30'
-      } flex flex-col transition-all duration-300 overflow-x-hidden`}
+      } fixed inset-y-0 left-0 z-40 flex -translate-x-full flex-col overflow-x-hidden transition-all duration-300 md:relative md:translate-x-0 ${
+        isMobileOpen ? 'translate-x-0' : ''
+      }`}
     >
-      <div className={`p-6 ${theme === 'dark' ? 'border-b border-slate-800/80' : 'border-b border-sky-200/80'} ${isCollapsed ? 'px-4' : ''}`}>
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between gap-3'}`}>
-          <div className={`flex items-center ${isCollapsed ? '' : 'gap-3'}`}>
+      <div className={`p-6 ${theme === 'dark' ? 'border-b border-slate-800/80' : 'border-b border-sky-200/80'} ${isCollapsed ? 'md:px-4' : ''}`}>
+        <div className={`flex items-center justify-between gap-3 ${isCollapsed ? 'md:justify-center' : ''}`}>
+          <div className={`flex items-center ${isCollapsed ? 'md:hidden' : 'gap-3'}`}>
             
-            {!isCollapsed && (
+            {(!isCollapsed || isMobileOpen) && (
               <div>
                 <h1 className={`text-xl font-bold truncate max-w-42.5 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{churchName}</h1>
                 <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Management System</p>
@@ -90,8 +93,17 @@ export function Sidebar() {
             )}
           </div>
           <button
+            onClick={closeMobileSidebar}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all md:hidden ${
+              theme === 'dark' ? 'text-slate-100 hover:bg-slate-800' : 'text-slate-700 hover:bg-sky-100'
+            }`}
+            title="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <button
             onClick={toggleSidebar}
-            className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition-all ${
+            className={`hidden md:inline-flex items-center justify-center w-9 h-9 rounded-lg transition-all ${
               theme === 'dark'
                 ? 'text-slate-100 hover:bg-slate-800'
                 : 'text-slate-700 hover:bg-sky-100'
@@ -109,8 +121,9 @@ export function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.exact}
+            onClick={closeMobileSidebar}
             className={({ isActive }) =>
-              `flex items-center ${isCollapsed ? 'justify-center px-3' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 group relative ${
+              `flex items-center ${isCollapsed ? 'md:justify-center md:px-3 gap-3 px-4' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 group relative ${
                 isActive
                   ? theme === 'dark'
                     ? 'bg-linear-to-r from-indigo-500 to-cyan-500 text-white shadow-lg shadow-cyan-900/40'
@@ -133,10 +146,10 @@ export function Sidebar() {
                         : 'text-slate-500 group-hover:text-slate-900'
                   }`}
                 />
-                {!isCollapsed && (
+                {(!isCollapsed || isMobileOpen) && (
                   <span className="font-medium text-[15px]">{item.label}</span>
                 )}
-                {isCollapsed && (
+                {isCollapsed && !isMobileOpen && (
                   <span
                     className={`absolute left-full ml-6 px-3 py-2 text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none ${
                       theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-slate-900 text-white'

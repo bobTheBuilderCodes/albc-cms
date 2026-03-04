@@ -20,6 +20,8 @@ type Env = {
   SMTP_PASS: string;
   SMTP_SECURE: boolean;
   BIRTHDAY_EMAIL_HOUR: number;
+  ARKESEL_API_KEY: string;
+  ARKESEL_SENDER_ID: string;
 };
 
 const readRequired = (key: RequiredKey): string => {
@@ -62,4 +64,6 @@ export const env: Env = {
   SMTP_PASS: process.env.SMTP_PASS || "",
   SMTP_SECURE: process.env.SMTP_SECURE === "true",
   BIRTHDAY_EMAIL_HOUR: Number(process.env.BIRTHDAY_EMAIL_HOUR || 8),
+  ARKESEL_API_KEY: (process.env.ARKESEL_API_KEY || "").trim(),
+  ARKESEL_SENDER_ID: (process.env.ARKESEL_SENDER_ID || "").trim(),
 };

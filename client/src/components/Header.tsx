@@ -1,4 +1,4 @@
-import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon } from 'lucide-react';
+import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
@@ -9,10 +9,12 @@ import {
   markNotificationAsRead,
 } from '../api/backend';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSidebar } from '../contexts/SidebarContext';
 
 export function Header() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { toggleMobileSidebar } = useSidebar();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -78,15 +80,22 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-6 shadow-sm">
+    <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-3 sm:px-6 shadow-sm">
       <div className="flex items-center gap-4">
+        <button
+          onClick={toggleMobileSidebar}
+          className="md:hidden p-2.5 text-neutral-500 bg-gray-200 hover:bg-neutral-100 rounded-xl transition-all"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <div>
-          <h2 className="text-lg text-neutral-900 font-semibold">Welcome back, <span className="text-primary-600">{user?.name.split(' ')[0]}</span></h2>
-          <p className="text-xs text-neutral-500 font-medium">Manage your church with ease</p>
+          <h2 className="text-base sm:text-lg text-neutral-900 font-semibold">Welcome back, <span className="text-primary-600">{user?.name.split(' ')[0]}</span></h2>
+          <p className="hidden sm:block text-xs text-neutral-500 font-medium">Manage your church with ease</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={toggleTheme}
           className="p-2.5 text-neutral-500 bg-gray-200 hover:bg-neutral-100 rounded-xl transition-all"
@@ -117,7 +126,7 @@ export function Header() {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowNotifications(false)}
               ></div>
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-xl border border-neutral-200 z-20 max-h-150 flex flex-col">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] sm:w-96 bg-white rounded-2xl shadow-xl border border-neutral-200 z-20 max-h-150 flex flex-col">
                 <div className="px-5 py-4 border-b border-neutral-200 flex items-center justify-between">
                   <div>
                     <h3 className="text-neutral-900 font-semibold">Notifications</h3>
@@ -187,16 +196,16 @@ export function Header() {
               setShowDropdown(!showDropdown);
               setShowNotifications(false);
             }}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-neutral-50 transition-all"
+            className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded-xl hover:bg-neutral-50 transition-all"
           >
             <div className="w-9 h-9 bg-blue-900 from-primary-500 to-accent-500 rounded-xl flex items-center justify-center shadow-sm">
               <span className="text-white text-sm font-semibold">{user?.name.charAt(0)}</span>
             </div>
-            <div className="text-left">
+            <div className="text-left hidden sm:block">
               <p className="text-sm text-neutral-900 font-semibold">{user?.name}</p>
               <p className="text-xs text-neutral-500 capitalize font-medium">{user?.role}</p>
             </div>
-            <ChevronDown className="w-4 h-4 text-neutral-400" />
+            <ChevronDown className="hidden sm:block w-4 h-4 text-neutral-400" />
           </button>
 
           {showDropdown && (
