@@ -2,6 +2,7 @@ export type UserRole = 'pastor' | 'admin' | 'finance' | 'staff';
 
 export type ModulePermission = 
   | 'dashboard'
+  | 'analytics'
   | 'members'
   | 'programs'
   | 'attendance'

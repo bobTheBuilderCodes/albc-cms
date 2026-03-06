@@ -23,6 +23,7 @@ import type { ModulePermission, User } from '../types';
 
 const allModules: Array<{ id: ModulePermission; label: string; description: string }> = [
   { id: 'dashboard', label: 'Dashboard', description: 'View system overview and statistics' },
+  { id: 'analytics', label: 'Analytics', description: 'View charts and trends for church data' },
   { id: 'members', label: 'Members', description: 'Manage church members' },
   { id: 'programs', label: 'Programs', description: 'Manage church programs and events' },
   { id: 'attendance', label: 'Attendance', description: 'Track attendance records' },

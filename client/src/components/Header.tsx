@@ -81,7 +81,7 @@ export function Header() {
 
   return (
     <header className="h-16 bg-white border-b border-neutral-200 flex items-center justify-between px-3 sm:px-6 shadow-sm">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center">
         <button
           onClick={toggleMobileSidebar}
           className="md:hidden p-2.5 text-neutral-500 bg-gray-200 hover:bg-neutral-100 rounded-xl transition-all"
@@ -89,10 +89,6 @@ export function Header() {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div>
-          <h2 className="text-base sm:text-lg text-neutral-900 font-semibold">Welcome back, <span className="text-primary-600">{user?.name.split(' ')[0]}</span></h2>
-          <p className="hidden sm:block text-xs text-neutral-500 font-medium">Manage your church with ease</p>
-        </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

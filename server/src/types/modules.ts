@@ -2,6 +2,7 @@ import { UserRole } from "./roles";
 
 export const MODULE_PERMISSIONS = [
   "dashboard",
+  "analytics",
   "members",
   "programs",
   "attendance",
@@ -19,11 +20,11 @@ export const defaultModulesForRole = (role: UserRole): ModulePermission[] => {
     case "Admin":
       return [...MODULE_PERMISSIONS];
     case "Pastor":
-      return ["dashboard", "members", "programs", "attendance", "messaging", "audit"];
+      return ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "audit"];
     case "Finance":
-      return ["dashboard", "finance", "audit", "members"];
+      return ["dashboard", "analytics", "finance", "audit", "members"];
     case "Staff":
     default:
-      return ["dashboard", "members", "programs", "attendance", "messaging"];
+      return ["dashboard", "analytics", "members", "programs", "attendance", "messaging"];
   }
 };

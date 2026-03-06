@@ -10,6 +10,7 @@ import { AuditLogs } from "./pages/AuditLogs";
 import { Settings } from "./pages/Settings";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import { Analytics } from "./pages/Analytics";
 import { UserManagement } from "./pages/UserManagement";
 import { ModuleGuard } from "./components/ModuleGuard";
 import { ProfileSettings } from "./pages/ProfileSettings";
@@ -29,6 +30,14 @@ export const router = createBrowserRouter([
         element: (
           <ModuleGuard module="dashboard">
             <Dashboard />
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "analytics",
+        element: (
+          <ModuleGuard module="analytics">
+            <Analytics />
           </ModuleGuard>
         ),
       },

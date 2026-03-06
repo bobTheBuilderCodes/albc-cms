@@ -12,6 +12,7 @@ export function ModuleGuard({ module, children }: ModuleGuardProps) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const moduleRouteMap: Record<ModulePermission, string> = {
     dashboard: "/",
+    analytics: "/analytics",
     members: "/members",
     programs: "/programs",
     attendance: "/attendance",
