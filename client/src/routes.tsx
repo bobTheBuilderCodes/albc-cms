@@ -15,6 +15,7 @@ import { UserManagement } from "./pages/UserManagement";
 import { ModuleGuard } from "./components/ModuleGuard";
 import { ProfileSettings } from "./pages/ProfileSettings";
 import { NotificationsConfiguration } from "./pages/NotificationsConfiguration";
+import { AiAssistant } from "./pages/AiAssistant";
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +39,14 @@ export const router = createBrowserRouter([
         element: (
           <ModuleGuard module="analytics">
             <Analytics />
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "assistant",
+        element: (
+          <ModuleGuard module="dashboard">
+            <AiAssistant />
           </ModuleGuard>
         ),
       },

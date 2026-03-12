@@ -14,7 +14,8 @@ import {
   ChevronRight,
   X,
   UserCog,
-  BellRing
+  BellRing,
+  Sparkles
 } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +25,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home', exact: true, module: 'dashboard' },
+  { to: '/assistant', icon: Sparkles, label: 'AI Assistant', module: 'dashboard' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics', module: 'analytics' },
   { to: '/members', icon: Users, label: 'Members', module: 'members' },
   { to: '/programs', icon: Calendar, label: 'Programs', module: 'programs' },

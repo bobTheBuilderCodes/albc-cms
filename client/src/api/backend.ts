@@ -742,3 +742,14 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 export async function markAllNotificationsAsRead(): Promise<void> {
   await API.patch("/notifications/read-all");
 }
+
+// ---------- AI Assistant ----------
+export async function chatWithAssistant(payload: {
+  message: string;
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
+}): Promise<{ reply: string; allowedModules: string[] }> {
+  const res = await API.post<ApiEnvelope<{ reply: string; allowedModules: string[] }>>("/ai/chat", payload);
+  return res.data.data;
+}
+
+// ---------- Knowledge Base ----------

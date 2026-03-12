@@ -22,6 +22,10 @@ type Env = {
   BIRTHDAY_EMAIL_HOUR: number;
   ARKESEL_API_KEY: string;
   ARKESEL_SENDER_ID: string;
+  AI_ENDPOINT: string;
+  AI_API_KEY: string;
+  AI_CHAT_API_KEY: string;
+  AI_MODEL: string;
 };
 
 const readRequired = (key: RequiredKey): string => {
@@ -66,4 +70,8 @@ export const env: Env = {
   BIRTHDAY_EMAIL_HOUR: Number(process.env.BIRTHDAY_EMAIL_HOUR || 8),
   ARKESEL_API_KEY: (process.env.ARKESEL_API_KEY || "").trim(),
   ARKESEL_SENDER_ID: (process.env.ARKESEL_SENDER_ID || "").trim(),
+  AI_ENDPOINT: (process.env.AI_ENDPOINT || "").trim(),
+  AI_API_KEY: (process.env.AI_API_KEY || "").trim(),
+  AI_CHAT_API_KEY: (process.env.AI_CHAT_API_KEY || "").trim(),
+  AI_MODEL: (process.env.AI_MODEL || "").trim(),
 };
