@@ -8,6 +8,7 @@ export const MODULE_PERMISSIONS = [
   "attendance",
   "messaging",
   "finance",
+  "soulcenter",
   "audit",
   "settings",
   "users",
@@ -20,11 +21,11 @@ export const defaultModulesForRole = (role: UserRole): ModulePermission[] => {
     case "Admin":
       return [...MODULE_PERMISSIONS];
     case "Pastor":
-      return ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "audit"];
+      return ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter", "audit"];
     case "Finance":
       return ["dashboard", "analytics", "finance", "audit", "members"];
     case "Staff":
     default:
-      return ["dashboard", "analytics", "members", "programs", "attendance", "messaging"];
+      return ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter"];
   }
 };

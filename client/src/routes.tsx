@@ -16,6 +16,7 @@ import { ModuleGuard } from "./components/ModuleGuard";
 import { ProfileSettings } from "./pages/ProfileSettings";
 import { NotificationsConfiguration } from "./pages/NotificationsConfiguration";
 import { AiAssistant } from "./pages/AiAssistant";
+import { SoulCenter } from "./pages/SoulCenter";
 
 export const router = createBrowserRouter([
   {
@@ -95,6 +96,14 @@ export const router = createBrowserRouter([
         element: (
           <ModuleGuard module="finance">
             <Finance />
+          </ModuleGuard>
+        ),
+      },
+      {
+        path: "soul-center",
+        element: (
+          <ModuleGuard module="soulcenter">
+            <SoulCenter />
           </ModuleGuard>
         ),
       },

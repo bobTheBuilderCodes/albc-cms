@@ -18,6 +18,7 @@ export function ModuleGuard({ module, children }: ModuleGuardProps) {
     attendance: "/attendance",
     messaging: "/messaging",
     finance: "/finance",
+    soulcenter: "/soul-center",
     audit: "/audit",
     settings: "/settings",
     users: "/user-management",

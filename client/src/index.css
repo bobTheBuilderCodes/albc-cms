@@ -59,6 +59,44 @@
     scrollbar-width: none;
   }
 
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.9) transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(203, 213, 225, 0.9);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.9);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  html.dark .sidebar-scroll {
+    scrollbar-color: rgba(100, 116, 139, 0.75) transparent;
+  }
+
+  html.dark .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.75);
+  }
+
+  html.dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.85);
+  }
+
   .bg-white.rounded-xl.border,
   .bg-white.rounded-2xl.border,
   .bg-white.rounded-xl.shadow-sm.border {

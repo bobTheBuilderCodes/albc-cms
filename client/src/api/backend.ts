@@ -1,5 +1,5 @@
 import API from "./axios";
-import type { Attendance, ChurchProgram, Donation, Expenditure, Member, SMSLog, User } from "../types";
+import type { Attendance, ChurchProgram, Donation, Expenditure, Member, Pledge, SMSLog, SoulCenterVisitor, User } from "../types";
 import type { Notification } from "../types/notifications";
 
 type ApiEnvelope<T> = { success: boolean; data: T };
@@ -11,10 +11,10 @@ const isoDate = (value?: string | Date): string => {
 };
 
 const roleModules: Record<User["role"], User["modules"]> = {
-  admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "audit", "settings", "users"],
-  pastor: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "audit"],
+  admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "soulcenter", "audit", "settings", "users"],
+  pastor: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter", "audit"],
   finance: ["dashboard", "analytics", "finance", "audit", "members"],
-  staff: ["dashboard", "analytics", "members", "programs", "attendance", "messaging"],
+  staff: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter"],
 };
 
 // ---------- Members ----------
@@ -112,6 +112,94 @@ export async function updateMember(memberId: string, input: Partial<Member>): Pr
 
 export async function deleteMember(memberId: string): Promise<void> {
   await API.delete(`/members/${memberId}`);
+}
+
+// ---------- Soul Center ----------
+type ApiSoulCenterVisitor = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  visitDate: string;
+  invitedBy?: any;
+  description?: string;
+  status: "pending" | "converted";
+  convertedMemberId?: string;
+  createdAt?: string;
+};
+
+const mapSoulCenterVisitor = (v: ApiSoulCenterVisitor): SoulCenterVisitor => {
+  const invitedById = v.invitedBy?._id ? String(v.invitedBy._id) : undefined;
+  const invitedByName = v.invitedBy
+    ? `${v.invitedBy.firstName ?? ""} ${v.invitedBy.lastName ?? ""}`.trim()
+    : undefined;
+  return {
+    id: v._id,
+    firstName: v.firstName,
+    lastName: v.lastName,
+    phone: v.phone,
+    email: v.email,
+    visitDate: isoDate(v.visitDate).slice(0, 10),
+    invitedById,
+    invitedByName: invitedByName || undefined,
+    description: v.description,
+    status: v.status,
+    convertedMemberId: v.convertedMemberId,
+    createdAt: v.createdAt ?? new Date().toISOString(),
+  };
+};
+
+export async function fetchSoulCenterVisitors(): Promise<SoulCenterVisitor[]> {
+  const res = await API.get<ApiEnvelope<ApiSoulCenterVisitor[]>>("/soul-center");
+  return res.data.data.map(mapSoulCenterVisitor);
+}
+
+export async function createSoulCenterVisitor(input: Partial<SoulCenterVisitor>): Promise<SoulCenterVisitor> {
+  const payload = {
+    firstName: input.firstName || "Visitor",
+    lastName: input.lastName || "Name",
+    phone: input.phone || undefined,
+    email: input.email || undefined,
+    visitDate: input.visitDate || new Date().toISOString(),
+    invitedBy: input.invitedById || undefined,
+    description: input.description || undefined,
+  };
+  const res = await API.post<ApiEnvelope<ApiSoulCenterVisitor>>("/soul-center", payload);
+  return mapSoulCenterVisitor(res.data.data);
+}
+
+export async function updateSoulCenterVisitor(id: string, input: Partial<SoulCenterVisitor>): Promise<SoulCenterVisitor> {
+  const payload: Record<string, unknown> = {};
+  if (input.firstName !== undefined) payload.firstName = input.firstName;
+  if (input.lastName !== undefined) payload.lastName = input.lastName;
+  if (input.phone !== undefined) payload.phone = input.phone || undefined;
+  if (input.email !== undefined) payload.email = input.email || undefined;
+  if (input.visitDate !== undefined) payload.visitDate = input.visitDate;
+  if (input.invitedById !== undefined) payload.invitedBy = input.invitedById || undefined;
+  if (input.description !== undefined) payload.description = input.description || undefined;
+  if (input.status !== undefined) payload.status = input.status;
+
+  const res = await API.put<ApiEnvelope<ApiSoulCenterVisitor>>(`/soul-center/${id}`, payload);
+  return mapSoulCenterVisitor(res.data.data);
+}
+
+export async function deleteSoulCenterVisitor(id: string): Promise<void> {
+  await API.delete(`/soul-center/${id}`);
+}
+
+export async function convertSoulCenterVisitor(
+  id: string,
+  payload?: Partial<Member>
+): Promise<{ visitor: SoulCenterVisitor; member: Member }> {
+  const res = await API.post<ApiEnvelope<{ visitor: ApiSoulCenterVisitor; member: ApiMember }>>(
+    `/soul-center/${id}/convert`,
+    payload || {}
+  );
+  return {
+    visitor: mapSoulCenterVisitor(res.data.data.visitor),
+    member: mapMember(res.data.data.member),
+  };
 }
 
 // ---------- Programs ----------
@@ -371,6 +459,81 @@ export async function fetchFinance(): Promise<{ donations: Donation[]; expenditu
   return { donations, expenditures };
 }
 
+// ---------- Pledges ----------
+type ApiPledge = {
+  _id: string;
+  member: any;
+  amount: number;
+  pledgeDate: string;
+  expectedDate?: string;
+  description?: string;
+  status: "pending" | "paid" | "cancelled";
+  paidAt?: string;
+  createdAt?: string;
+};
+
+const mapPledge = (p: ApiPledge): Pledge => {
+  const memberName = p.member
+    ? `${p.member.firstName ?? ""} ${p.member.lastName ?? ""}`.trim()
+    : "";
+  return {
+    id: p._id,
+    memberId: String(p.member?._id || ""),
+    memberName,
+    amount: p.amount,
+    pledgeDate: isoDate(p.pledgeDate).slice(0, 10),
+    expectedDate: p.expectedDate ? isoDate(p.expectedDate).slice(0, 10) : undefined,
+    description: p.description,
+    status: p.status,
+    paidAt: p.paidAt,
+    createdAt: p.createdAt ?? new Date().toISOString(),
+  };
+};
+
+export async function fetchPledges(): Promise<Pledge[]> {
+  const res = await API.get<ApiEnvelope<ApiPledge[]>>("/pledges");
+  return res.data.data.map(mapPledge);
+}
+
+export async function createPledge(input: {
+  memberId: string;
+  amount: number;
+  pledgeDate: string;
+  expectedDate?: string;
+  description?: string;
+}): Promise<Pledge> {
+  const payload = {
+    member: input.memberId,
+    amount: input.amount,
+    pledgeDate: input.pledgeDate,
+    expectedDate: input.expectedDate || undefined,
+    description: input.description || undefined,
+  };
+  const res = await API.post<ApiEnvelope<ApiPledge>>("/pledges", payload);
+  return mapPledge(res.data.data);
+}
+
+export async function updatePledge(id: string, input: Partial<Pledge>): Promise<Pledge> {
+  const payload: Record<string, unknown> = {};
+  if (input.amount !== undefined) payload.amount = input.amount;
+  if (input.pledgeDate !== undefined) payload.pledgeDate = input.pledgeDate;
+  if (input.expectedDate !== undefined) payload.expectedDate = input.expectedDate || undefined;
+  if (input.description !== undefined) payload.description = input.description || undefined;
+  if (input.status !== undefined) payload.status = input.status;
+
+  const res = await API.put<ApiEnvelope<ApiPledge>>(`/pledges/${id}`, payload);
+  return mapPledge(res.data.data);
+}
+
+export async function deletePledge(id: string): Promise<void> {
+  await API.delete(`/pledges/${id}`);
+}
+
+export async function convertPledgeToIncome(id: string): Promise<Pledge> {
+  const res = await API.post<ApiEnvelope<ApiPledge>>(`/pledges/${id}/convert`);
+  return mapPledge(res.data.data);
+}
+
 export async function createFinanceTransaction(input: {
   type: "Tithe" | "Offering" | "Donation" | "Expense";
   amount: number;
@@ -388,7 +551,17 @@ export async function createFinanceTransaction(input: {
 }
 
 // ---------- Users ----------
-type ApiUserModules = "dashboard" | "members" | "programs" | "attendance" | "messaging" | "finance" | "audit" | "settings" | "users";
+type ApiUserModules =
+  | "dashboard"
+  | "members"
+  | "programs"
+  | "attendance"
+  | "messaging"
+  | "finance"
+  | "soulcenter"
+  | "audit"
+  | "settings"
+  | "users";
 type ApiUser = { _id: string; name: string; email: string; role: string; modules?: ApiUserModules[]; isActive?: boolean; createdAt?: string; updatedAt?: string };
 
 const mapUser = (u: ApiUser): User => {

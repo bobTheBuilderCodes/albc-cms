@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import type { Donation, Expenditure, Member } from '../types';
+import type { Donation, Expenditure, Member, Pledge } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { addAuditLog } from '../utils/mockData';
-import { createFinanceTransaction, fetchFinance, fetchMembers } from '../api/backend';
+import { createFinanceTransaction, createPledge, fetchFinance, fetchMembers, fetchPledges, convertPledgeToIncome } from '../api/backend';
 import { downloadReceipt, DonationReceipt } from '../components/DonationReceipt';
 import { 
   DollarSign, 
@@ -22,28 +22,31 @@ import {
 } from 'lucide-react';
 import { Pagination } from '../components/Pagination';
 
-type TabType = 'income' | 'expenditure';
+type TabType = 'income' | 'expenditure' | 'pledges';
 const incomeTypeLabel = (type: string) => (type === 'offering' ? 'dues' : type);
 
 export function Finance() {
   const [activeTab, setActiveTab] = useState<TabType>('income');
   const [donations, setDonations] = useState<Donation[]>([]);
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
+  const [pledges, setPledges] = useState<Pledge[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'tithe' | 'offering' | 'seed' | 'special' | 'other'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [showAddIncomeModal, setShowAddIncomeModal] = useState(false);
   const [showAddExpenditureModal, setShowAddExpenditureModal] = useState(false);
+  const [showAddPledgeModal, setShowAddPledgeModal] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<Donation | null>(null);
   const { user } = useAuth();
   const toast = useToast();
 
   useEffect(() => {
     const load = async () => {
-      const [finance, mem] = await Promise.all([fetchFinance(), fetchMembers()]);
+      const [finance, mem, pledgeData] = await Promise.all([fetchFinance(), fetchMembers(), fetchPledges()]);
       setDonations(finance.donations);
       setExpenditures(finance.expenditures);
+      setPledges(pledgeData);
       setMembers(mem);
     };
     load().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load finance data'));
@@ -58,6 +61,11 @@ export function Finance() {
   const filteredExpenditures = expenditures.filter(e => {
     if (categoryFilter !== 'all' && e.category !== categoryFilter) return false;
     if (searchQuery && !e.description.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const filteredPledges = pledges.filter(p => {
+    if (searchQuery && !p.memberName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -85,6 +93,24 @@ export function Finance() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `income-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    } else if (activeTab === 'pledges') {
+      const headers = ['Member', 'Pledge Date', 'Expected Date', 'Amount', 'Status', 'Description'];
+      const rows = filteredPledges.map(p => [
+        p.memberName,
+        new Date(p.pledgeDate).toLocaleDateString(),
+        p.expectedDate ? new Date(p.expectedDate).toLocaleDateString() : '',
+        p.amount,
+        p.status,
+        p.description || '',
+      ]);
+
+      const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pledges-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
     } else {
       const headers = ['Date', 'Category', 'Description', 'Amount', 'Vendor', 'Payment Method', 'Approved By'];
@@ -117,11 +143,15 @@ export function Finance() {
             <p className="text-neutral-600 text-sm sm:text-base">Track income and expenditures</p>
           </div>
           <button
-            onClick={() => activeTab === 'income' ? setShowAddIncomeModal(true) : setShowAddExpenditureModal(true)}
+            onClick={() => {
+              if (activeTab === 'income') return setShowAddIncomeModal(true);
+              if (activeTab === 'pledges') return setShowAddPledgeModal(true);
+              return setShowAddExpenditureModal(true);
+            }}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-900 from-primary-600 to-accent-600 text-white rounded-lg hover:from-primary-700 hover:to-accent-700 transition-all shadow-lg font-semibold"
           >
             <Plus className="w-5 h-5" />
-            Record {activeTab === 'income' ? 'Income' : 'Expenditure'}
+            Record {activeTab === 'income' ? 'Income' : activeTab === 'pledges' ? 'Pledge' : 'Expenditure'}
           </button>
         </div>
 
@@ -203,6 +233,25 @@ export function Finance() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
               )}
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('pledges');
+                setSearchQuery('');
+              }}
+              className={`py-3.5 px-2 font-semibold text-sm transition-all relative ${
+                activeTab === 'pledges'
+                  ? 'bg-gray-200 rounded-xl my-2 px-4 text-primary-600'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
+                Pledges
+              </div>
+              {activeTab === 'pledges' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
+              )}
+            </button>
           </div>
         </div>
 
@@ -217,6 +266,24 @@ export function Finance() {
               setTypeFilter={setTypeFilter}
               exportData={exportData}
               setViewingReceipt={setViewingReceipt}
+            />
+          ) : activeTab === 'pledges' ? (
+            <PledgesTab
+              pledges={filteredPledges}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onConvert={async (pledgeId) => {
+                try {
+                  await convertPledgeToIncome(pledgeId);
+                  const [finance, pledgeData] = await Promise.all([fetchFinance(), fetchPledges()]);
+                  setDonations(finance.donations);
+                  setExpenditures(finance.expenditures);
+                  setPledges(pledgeData);
+                  toast.success("Pledge converted to income");
+                } catch (e: any) {
+                  toast.error(e?.response?.data?.message || e?.message || "Failed to convert pledge");
+                }
+              }}
             />
           ) : (
             <ExpenditureTab
@@ -309,6 +376,30 @@ export function Finance() {
               setShowAddExpenditureModal(false);
             } catch (e: any) {
               toast.error(e?.response?.data?.message || e?.message || 'Failed to record expenditure');
+            }
+          }}
+        />
+      )}
+
+      {showAddPledgeModal && (
+        <PledgeModal
+          members={members}
+          onClose={() => setShowAddPledgeModal(false)}
+          onSave={async (pledge) => {
+            try {
+              await createPledge({
+                memberId: pledge.memberId,
+                amount: Number(pledge.amount || 0),
+                pledgeDate: pledge.pledgeDate,
+                expectedDate: pledge.expectedDate || undefined,
+                description: pledge.description || undefined,
+              });
+              const data = await fetchPledges();
+              setPledges(data);
+              toast.success("Pledge recorded");
+              setShowAddPledgeModal(false);
+            } catch (e: any) {
+              toast.error(e?.response?.data?.message || e?.message || "Failed to record pledge");
             }
           }}
         />
@@ -520,6 +611,140 @@ function IncomeTab({
         <div className="text-center py-12">
           <DollarSign className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
           <p className="text-neutral-500 font-medium">No income records found</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+function PledgesTab({
+  pledges,
+  searchQuery,
+  setSearchQuery,
+  onConvert,
+}: {
+  pledges: Pledge[];
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  onConvert: (pledgeId: string) => void;
+}) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  return (
+    <>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <input
+            type="text"
+            placeholder="Search by member name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {pledges.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((pledge) => (
+          <div key={pledge.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-neutral-900 font-semibold">{pledge.memberName}</p>
+                <p className="text-xs text-neutral-500">{new Date(pledge.pledgeDate).toLocaleDateString()}</p>
+              </div>
+              <p className="text-sm text-success-600 font-bold">GH₵ {pledge.amount.toFixed(2)}</p>
+            </div>
+            <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-neutral-600">
+              <span className="px-2 py-1 rounded-full bg-gray-50 text-primary-700 font-semibold capitalize">
+                {pledge.status}
+              </span>
+              {pledge.expectedDate && (
+                <span>Expected: {new Date(pledge.expectedDate).toLocaleDateString()}</span>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-end gap-2">
+              {pledge.status !== "paid" && (
+                <button
+                  onClick={() => onConvert(pledge.id)}
+                  className="px-3 py-1.5 rounded-lg bg-success-600 text-white text-xs font-semibold"
+                >
+                  Convert to income
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:block overflow-x-auto border border-neutral-200 rounded-xl">
+        <table className="w-full">
+          <thead className="bg-neutral-50 border-b border-neutral-200">
+            <tr>
+              <th className="text-left px-6 py-3 text-sm text-neutral-700 font-semibold">Member</th>
+              <th className="text-left px-6 py-3 text-sm text-neutral-700 font-semibold">Pledge Date</th>
+              <th className="text-left px-6 py-3 text-sm text-neutral-700 font-semibold">Expected Date</th>
+              <th className="text-left px-6 py-3 text-sm text-neutral-700 font-semibold">Amount</th>
+              <th className="text-left px-6 py-3 text-sm text-neutral-700 font-semibold">Status</th>
+              <th className="text-left px-6 py-3 text-sm text-neutral-700 font-semibold">Description</th>
+              <th className="text-right px-6 py-3 text-sm text-neutral-700 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-200">
+            {pledges.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((pledge) => (
+              <tr key={pledge.id} className="hover:bg-neutral-50 transition-colors">
+                <td className="px-6 py-4 text-sm text-neutral-900 font-medium">{pledge.memberName}</td>
+                <td className="px-6 py-4 text-sm text-neutral-600">
+                  {new Date(pledge.pledgeDate).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 text-sm text-neutral-600">
+                  {pledge.expectedDate ? new Date(pledge.expectedDate).toLocaleDateString() : "-"}
+                </td>
+                <td className="px-6 py-4 text-sm text-success-600 font-bold">
+                  GH₵ {pledge.amount.toFixed(2)}
+                </td>
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-gray-50 text-primary-700 capitalize font-semibold">
+                    {pledge.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-neutral-600">{pledge.description || "-"}</td>
+                <td className="px-6 py-4 text-right">
+                  {pledge.status !== "paid" && (
+                    <button
+                      onClick={() => onConvert(pledge.id)}
+                      className="px-3 py-1.5 rounded-lg bg-success-600 text-white text-xs font-semibold"
+                    >
+                      Convert to income
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          totalItems={pledges.length}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          totalPages={Math.ceil(pledges.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+      <div className="md:hidden">
+        <Pagination
+          totalItems={pledges.length}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          totalPages={Math.ceil(pledges.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+
+      {pledges.length === 0 && (
+        <div className="text-center py-12 text-sm text-neutral-500">
+          {searchQuery ? "No pledges match your search" : "No pledges recorded yet"}
         </div>
       )}
     </>
@@ -1020,6 +1245,127 @@ function ExpenditureModal({
               className="flex-1 bg-blue-900 from-danger-600 to-danger-700 text-white py-2 rounded-lg hover:from-danger-700 hover:to-danger-800 transition-all font-semibold"
             >
               Record Expenditure
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-neutral-100 text-neutral-700 py-2 rounded-lg hover:bg-neutral-200 transition-colors font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PledgeModal({
+  members,
+  onClose,
+  onSave,
+}: {
+  members: Member[];
+  onClose: () => void;
+  onSave: (pledge: { memberId: string; amount: number; pledgeDate: string; expectedDate?: string; description?: string }) => void;
+}) {
+  const [formData, setFormData] = useState({
+    memberId: "",
+    amount: 0,
+    pledgeDate: new Date().toISOString().split("T")[0],
+    expectedDate: "",
+    description: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      memberId: formData.memberId,
+      amount: formData.amount,
+      pledgeDate: formData.pledgeDate,
+      expectedDate: formData.expectedDate || undefined,
+      description: formData.description || undefined,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl">
+        <div className="border-b border-neutral-200 px-6 py-4 flex items-center justify-between">
+          <h3 className="text-neutral-900 font-semibold">Record Pledge</h3>
+          <button onClick={onClose} className="p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm text-neutral-700 mb-2 font-semibold">Member *</label>
+            <select
+              value={formData.memberId}
+              onChange={(e) => setFormData({ ...formData, memberId: e.target.value })}
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+              required
+            >
+              <option value="">Select member</option>
+              {members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-neutral-700 mb-2 font-semibold">Amount (GH₵) *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-700 mb-2 font-semibold">Pledge Date *</label>
+              <input
+                type="date"
+                value={formData.pledgeDate}
+                onChange={(e) => setFormData({ ...formData, pledgeDate: e.target.value })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-700 mb-2 font-semibold">Expected Payment Date</label>
+              <input
+                type="date"
+                value={formData.expectedDate}
+                onChange={(e) => setFormData({ ...formData, expectedDate: e.target.value })}
+                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-neutral-700 mb-2 font-semibold">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="submit"
+              className="flex-1 bg-blue-900 text-white py-2 rounded-lg transition-all font-semibold"
+            >
+              Record Pledge
             </button>
             <button
               type="button"

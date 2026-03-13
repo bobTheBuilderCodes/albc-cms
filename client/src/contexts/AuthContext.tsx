@@ -26,10 +26,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const modulesByRole: Record<User["role"], User["modules"]> = {
-    admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "audit", "settings", "users"],
-    pastor: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "audit"],
+    admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "soulcenter", "audit", "settings", "users"],
+    pastor: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter", "audit"],
     finance: ["dashboard", "analytics", "finance", "audit", "members"],
-    staff: ["dashboard", "analytics", "members", "programs", "attendance", "messaging"],
+    staff: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter"],
   };
 
   const hydrateFromToken = (token: string): User | null => {

@@ -15,7 +15,8 @@ import {
   X,
   UserCog,
   BellRing,
-  Sparkles
+  Sparkles,
+  UserPlus
 } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,9 +33,10 @@ const navItems = [
   { to: '/attendance', icon: UserCheck, label: 'Attendance', module: 'attendance' },
   { to: '/messaging', icon: MessageSquare, label: 'Messaging', module: 'messaging' },
   { to: '/finance', icon: DollarSign, label: 'Finance', module: 'finance' },
+  { to: '/soul-center', icon: UserPlus, label: 'Soul Center', module: 'soulcenter' },
   { to: '/audit', icon: FileText, label: 'Audit Logs', module: 'audit' },
   { to: '/user-management', icon: UserCog, label: 'User Management', module: 'users' },
-  { to: '/notifications-configuration', icon: BellRing, label: 'Notifications Configuration', module: 'settings' },
+  { to: '/notifications-configuration', icon: BellRing, label: 'Notifications Config', module: 'settings' },
   { to: '/settings', icon: Settings, label: 'Settings', module: 'settings' },
 ];
 
@@ -119,7 +121,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
         {visibleNavItems.map((item) => (
           <NavLink
             key={item.to}

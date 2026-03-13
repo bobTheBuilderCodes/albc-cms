@@ -213,33 +213,25 @@ export function Attendance() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div className="border border-gray-200 p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <UserCheck className="w-8 h-8 text-gray-500" />
-              </div>
+
               <p className="text-3xl mb-1">{attendance.length}</p>
               <p className="text-sm text-gray-500">Total Records</p>
             </div>
 
             <div className="border border-gray-200 p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <CheckCircle2 className="w-8 h-8 text-gray-500" />
-              </div>
+             
               <p className="text-3xl mb-1">{attendance.filter((a) => a.status === "present").length}</p>
               <p className="text-sm text-gray-500">Present</p>
             </div>
 
             <div className="border border-gray-200 p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <XCircle className="w-8 h-8 text-gray-500" />
-              </div>
+              
               <p className="text-3xl mb-1">{attendance.filter((a) => a.status === "absent").length}</p>
               <p className="text-sm text-gray-500">Absent</p>
             </div>
 
             <div className="border border-gray-200 p-6 text-gray-700 bg-white rounded-xl hover:bg-neutral-100 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="w-8 h-8 text-gray-500" />
-              </div>
+              
               <p className="text-3xl mb-1">{overallAttendanceRate.toFixed(0)}%</p>
               <p className="text-sm text-gray-500">Attendance Rate</p>
             </div>

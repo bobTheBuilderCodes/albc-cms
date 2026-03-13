@@ -10,6 +10,8 @@ import settingsRoutes from "./modules/settings/settings.routes";
 import smsRoutes from "./modules/sms/sms.routes";
 import inAppNotificationRoutes from "./modules/notifications/in-app-notification.routes";
 import aiRoutes from "./modules/ai/ai.routes";
+import pledgeRoutes from "./modules/pledges/pledge.routes";
+import soulCenterRoutes from "./modules/soul-center/soul-center.routes";
 import { errorHandler, notFound } from "./middlewares/error.middleware";
 
 const app = express();
@@ -31,6 +33,8 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/sms", smsRoutes);
 app.use("/api/notifications", inAppNotificationRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/pledges", pledgeRoutes);
+app.use("/api/soul-center", soulCenterRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -8,6 +8,7 @@ export type ModulePermission =
   | 'attendance'
   | 'messaging'
   | 'finance'
+  | 'soulcenter'
   | 'audit'
   | 'settings'
   | 'users';
@@ -209,4 +210,36 @@ export interface PrayerRequest {
   updatedAt: string;
   answeredAt?: string;
   answeredNote?: string;
+}
+
+export type PledgeStatus = "pending" | "paid" | "cancelled";
+
+export interface Pledge {
+  id: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+  pledgeDate: string;
+  expectedDate?: string;
+  description?: string;
+  status: PledgeStatus;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export type SoulCenterStatus = "pending" | "converted";
+
+export interface SoulCenterVisitor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  visitDate: string;
+  invitedById?: string;
+  invitedByName?: string;
+  description?: string;
+  status: SoulCenterStatus;
+  convertedMemberId?: string;
+  createdAt: string;
 }
