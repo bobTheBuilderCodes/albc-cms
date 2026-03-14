@@ -1,4 +1,5 @@
 import API from "./axios";
+import { buildCacheKey, cacheGet } from "../utils/offline";
 import type { Attendance, ChurchProgram, Donation, Expenditure, Member, Pledge, SMSLog, SoulCenterVisitor, User } from "../types";
 import type { Notification } from "../types/notifications";
 
@@ -9,6 +10,30 @@ const isoDate = (value?: string | Date): string => {
   if (value instanceof Date) return value.toISOString();
   return new Date(value).toISOString();
 };
+
+const offlineId = () => `offline-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const offlineNow = () => new Date().toISOString();
+
+async function getCachedMember(memberId: string): Promise<ApiMember | null> {
+  const byId = await cacheGet<ApiEnvelope<ApiMember>>(buildCacheKey(`/members/${memberId}`));
+  if (byId?.data) return byId.data;
+  const list = await cacheGet<ApiEnvelope<ApiMember[]>>(buildCacheKey("/members"));
+  return list?.data?.find((m) => m._id === memberId) ?? null;
+}
+
+async function getCachedProgram(programId: string): Promise<ApiProgram | null> {
+  const byId = await cacheGet<ApiEnvelope<ApiProgram>>(buildCacheKey(`/programs/${programId}`));
+  if (byId?.data) return byId.data;
+  const list = await cacheGet<ApiEnvelope<ApiProgram[]>>(buildCacheKey("/programs"));
+  return list?.data?.find((p) => p._id === programId) ?? null;
+}
+
+async function getCachedVisitor(visitorId: string): Promise<ApiSoulCenterVisitor | null> {
+  const byId = await cacheGet<ApiEnvelope<ApiSoulCenterVisitor>>(buildCacheKey(`/soul-center/${visitorId}`));
+  if (byId?.data) return byId.data;
+  const list = await cacheGet<ApiEnvelope<ApiSoulCenterVisitor[]>>(buildCacheKey("/soul-center"));
+  return list?.data?.find((v) => v._id === visitorId) ?? null;
+}
 
 const roleModules: Record<User["role"], User["modules"]> = {
   admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "soulcenter", "audit", "settings", "users"],
@@ -83,7 +108,24 @@ export async function createMember(input: Partial<Member>): Promise<Member> {
     joinDate: input.joinDate || undefined,
   };
 
-  const res = await API.post<ApiEnvelope<ApiMember>>("/members", payload);
+  const offlinePayload: ApiMember = {
+    _id: offlineId(),
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    gender: payload.gender as ApiMember["gender"],
+    maritalStatus: payload.maritalStatus as ApiMember["maritalStatus"],
+    membershipStatus: payload.membershipStatus as ApiMember["membershipStatus"],
+    department: payload.department,
+    phone: payload.phone,
+    email: payload.email,
+    address: payload.address,
+    dateOfBirth: payload.dateOfBirth,
+    joinDate: payload.joinDate,
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+
+  const res = await API.post<ApiEnvelope<ApiMember>>("/members", payload, { offlineData: offlinePayload });
   return mapMember(res.data.data);
 }
 
@@ -106,7 +148,25 @@ export async function updateMember(memberId: string, input: Partial<Member>): Pr
   if (input.dateOfBirth !== undefined) payload.dateOfBirth = input.dateOfBirth || undefined;
   if (input.joinDate !== undefined) payload.joinDate = input.joinDate || undefined;
 
-  const res = await API.put<ApiEnvelope<ApiMember>>(`/members/${memberId}`, payload);
+  const cached = await getCachedMember(memberId);
+  const fallback: ApiMember = {
+    _id: memberId,
+    firstName: input.fullName ? firstName || "Member" : cached?.firstName || "Member",
+    lastName: input.fullName ? lastName || "Name" : cached?.lastName || "Name",
+    gender: (input.gender ?? cached?.gender) as ApiMember["gender"],
+    maritalStatus: (input.maritalStatus ?? cached?.maritalStatus) as ApiMember["maritalStatus"],
+    membershipStatus: (input.membershipStatus ?? cached?.membershipStatus) as ApiMember["membershipStatus"],
+    department: input.department ?? cached?.department,
+    phone: input.phoneNumber ?? cached?.phone,
+    email: input.email ?? cached?.email,
+    address: input.address ?? cached?.address,
+    dateOfBirth: input.dateOfBirth ?? cached?.dateOfBirth,
+    joinDate: input.joinDate ?? cached?.joinDate,
+    createdAt: cached?.createdAt ?? offlineNow(),
+    updatedAt: offlineNow(),
+  };
+
+  const res = await API.put<ApiEnvelope<ApiMember>>(`/members/${memberId}`, payload, { offlineData: fallback });
   return mapMember(res.data.data);
 }
 
@@ -165,7 +225,19 @@ export async function createSoulCenterVisitor(input: Partial<SoulCenterVisitor>)
     invitedBy: input.invitedById || undefined,
     description: input.description || undefined,
   };
-  const res = await API.post<ApiEnvelope<ApiSoulCenterVisitor>>("/soul-center", payload);
+  const offlinePayload: ApiSoulCenterVisitor = {
+    _id: offlineId(),
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    phone: payload.phone,
+    email: payload.email,
+    visitDate: payload.visitDate,
+    invitedBy: input.invitedById ? { _id: input.invitedById } : undefined,
+    description: payload.description,
+    status: "pending",
+    createdAt: offlineNow(),
+  };
+  const res = await API.post<ApiEnvelope<ApiSoulCenterVisitor>>("/soul-center", payload, { offlineData: offlinePayload });
   return mapSoulCenterVisitor(res.data.data);
 }
 
@@ -180,7 +252,21 @@ export async function updateSoulCenterVisitor(id: string, input: Partial<SoulCen
   if (input.description !== undefined) payload.description = input.description || undefined;
   if (input.status !== undefined) payload.status = input.status;
 
-  const res = await API.put<ApiEnvelope<ApiSoulCenterVisitor>>(`/soul-center/${id}`, payload);
+  const cached = await getCachedVisitor(id);
+  const offlinePayload: ApiSoulCenterVisitor = {
+    _id: id,
+    firstName: input.firstName ?? cached?.firstName ?? "Visitor",
+    lastName: input.lastName ?? cached?.lastName ?? "Name",
+    phone: input.phone ?? cached?.phone,
+    email: input.email ?? cached?.email,
+    visitDate: input.visitDate ?? cached?.visitDate ?? offlineNow(),
+    invitedBy: input.invitedById ? { _id: input.invitedById } : cached?.invitedBy,
+    description: input.description ?? cached?.description,
+    status: input.status ?? cached?.status ?? "pending",
+    convertedMemberId: cached?.convertedMemberId,
+    createdAt: cached?.createdAt ?? offlineNow(),
+  };
+  const res = await API.put<ApiEnvelope<ApiSoulCenterVisitor>>(`/soul-center/${id}`, payload, { offlineData: offlinePayload });
   return mapSoulCenterVisitor(res.data.data);
 }
 
@@ -192,9 +278,42 @@ export async function convertSoulCenterVisitor(
   id: string,
   payload?: Partial<Member>
 ): Promise<{ visitor: SoulCenterVisitor; member: Member }> {
+  const [firstName, ...rest] = (payload?.fullName || "").trim().split(/\s+/);
+  const lastName = rest.join(" ");
+  const offlineMember: ApiMember = {
+    _id: offlineId(),
+    firstName: firstName || "Member",
+    lastName: lastName || "Name",
+    phone: payload?.phoneNumber,
+    email: payload?.email,
+    gender: payload?.gender as ApiMember["gender"],
+    maritalStatus: payload?.maritalStatus as ApiMember["maritalStatus"],
+    membershipStatus: payload?.membershipStatus as ApiMember["membershipStatus"],
+    department: payload?.department,
+    address: payload?.address,
+    dateOfBirth: payload?.dateOfBirth,
+    joinDate: payload?.joinDate,
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const cached = await getCachedVisitor(id);
+  const offlineVisitor: ApiSoulCenterVisitor = {
+    _id: id,
+    firstName: cached?.firstName ?? "Visitor",
+    lastName: cached?.lastName ?? "Name",
+    phone: cached?.phone,
+    email: cached?.email,
+    visitDate: cached?.visitDate ?? offlineNow(),
+    invitedBy: cached?.invitedBy,
+    description: cached?.description,
+    status: "converted",
+    convertedMemberId: offlineMember._id,
+    createdAt: cached?.createdAt ?? offlineNow(),
+  };
   const res = await API.post<ApiEnvelope<{ visitor: ApiSoulCenterVisitor; member: ApiMember }>>(
     `/soul-center/${id}/convert`,
-    payload || {}
+    payload || {},
+    { offlineData: { visitor: offlineVisitor, member: offlineMember } }
   );
   return {
     visitor: mapSoulCenterVisitor(res.data.data.visitor),
@@ -243,7 +362,16 @@ export async function createProgram(input: Partial<ChurchProgram>): Promise<Chur
     date: input.date || new Date().toISOString(),
     location: input.location || undefined,
   };
-  const res = await API.post<ApiEnvelope<ApiProgram>>("/programs", payload);
+  const offlinePayload: ApiProgram = {
+    _id: offlineId(),
+    title: payload.title,
+    description: payload.description,
+    date: payload.date,
+    location: payload.location,
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const res = await API.post<ApiEnvelope<ApiProgram>>("/programs", payload, { offlineData: offlinePayload });
   return mapProgram(res.data.data);
 }
 
@@ -254,7 +382,17 @@ export async function updateProgram(programId: string, input: Partial<ChurchProg
   if (input.date !== undefined) payload.date = input.date;
   if (input.location !== undefined) payload.location = input.location || undefined;
 
-  const res = await API.put<ApiEnvelope<ApiProgram>>(`/programs/${programId}`, payload);
+  const cached = await getCachedProgram(programId);
+  const offlinePayload: ApiProgram = {
+    _id: programId,
+    title: input.name ?? cached?.title ?? "Program",
+    description: input.description ?? cached?.description,
+    date: input.date ?? cached?.date ?? offlineNow(),
+    location: input.location ?? cached?.location,
+    createdAt: cached?.createdAt ?? offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const res = await API.put<ApiEnvelope<ApiProgram>>(`/programs/${programId}`, payload, { offlineData: offlinePayload });
   return mapProgram(res.data.data);
 }
 
@@ -326,7 +464,15 @@ export async function markAttendance(input: { programId: string; memberId: strin
     member: input.memberId,
     status: input.status === "present" ? "Present" : "Absent",
   };
-  const res = await API.post<ApiEnvelope<ApiAttendance>>("/attendance", payload);
+  const offlinePayload: ApiAttendance = {
+    _id: offlineId(),
+    program: input.programId,
+    member: input.memberId,
+    status: input.status === "present" ? "Present" : "Absent",
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const res = await API.post<ApiEnvelope<ApiAttendance>>("/attendance", payload, { offlineData: offlinePayload });
   return mapAttendance(res.data.data);
 }
 
@@ -384,11 +530,22 @@ export async function markSundayAttendance(input: {
   sundayKey: string;
   status: "present" | "absent";
 }): Promise<SundayAttendanceRecord> {
-  const res = await API.put<ApiEnvelope<ApiSundayAttendance>>(`/attendance/sunday/${input.year}`, {
+  const payload = {
     memberId: input.memberId,
     sundayKey: input.sundayKey,
     status: input.status === "present" ? "Present" : "Absent",
-  });
+  };
+  const offlinePayload: ApiSundayAttendance = {
+    _id: offlineId(),
+    year: input.year,
+    sundayKey: input.sundayKey,
+    sundayDate: input.sundayKey,
+    member: input.memberId,
+    status: input.status === "present" ? "Present" : "Absent",
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const res = await API.put<ApiEnvelope<ApiSundayAttendance>>(`/attendance/sunday/${input.year}`, payload, { offlineData: offlinePayload });
   return mapSundayAttendance(res.data.data);
 }
 
@@ -509,7 +666,17 @@ export async function createPledge(input: {
     expectedDate: input.expectedDate || undefined,
     description: input.description || undefined,
   };
-  const res = await API.post<ApiEnvelope<ApiPledge>>("/pledges", payload);
+  const offlinePayload: ApiPledge = {
+    _id: offlineId(),
+    member: { _id: input.memberId },
+    amount: input.amount,
+    pledgeDate: input.pledgeDate,
+    expectedDate: input.expectedDate,
+    description: input.description,
+    status: "pending",
+    createdAt: offlineNow(),
+  };
+  const res = await API.post<ApiEnvelope<ApiPledge>>("/pledges", payload, { offlineData: offlinePayload });
   return mapPledge(res.data.data);
 }
 
@@ -521,7 +688,17 @@ export async function updatePledge(id: string, input: Partial<Pledge>): Promise<
   if (input.description !== undefined) payload.description = input.description || undefined;
   if (input.status !== undefined) payload.status = input.status;
 
-  const res = await API.put<ApiEnvelope<ApiPledge>>(`/pledges/${id}`, payload);
+  const offlinePayload: ApiPledge = {
+    _id: id,
+    member: { _id: input.memberId || "" },
+    amount: input.amount ?? 0,
+    pledgeDate: input.pledgeDate ?? offlineNow(),
+    expectedDate: input.expectedDate,
+    description: input.description,
+    status: input.status ?? "pending",
+    createdAt: offlineNow(),
+  };
+  const res = await API.put<ApiEnvelope<ApiPledge>>(`/pledges/${id}`, payload, { offlineData: offlinePayload });
   return mapPledge(res.data.data);
 }
 
@@ -530,7 +707,16 @@ export async function deletePledge(id: string): Promise<void> {
 }
 
 export async function convertPledgeToIncome(id: string): Promise<Pledge> {
-  const res = await API.post<ApiEnvelope<ApiPledge>>(`/pledges/${id}/convert`);
+  const offlinePayload: ApiPledge = {
+    _id: id,
+    member: { _id: "" },
+    amount: 0,
+    pledgeDate: offlineNow(),
+    status: "paid",
+    paidAt: offlineNow(),
+    createdAt: offlineNow(),
+  };
+  const res = await API.post<ApiEnvelope<ApiPledge>>(`/pledges/${id}/convert`, undefined, { offlineData: offlinePayload });
   return mapPledge(res.data.data);
 }
 
@@ -597,13 +783,24 @@ export async function createUser(input: { name: string; email: string; password:
       ? "Staff"
       : "Pastor";
 
-  const res = await API.post<ApiEnvelope<{ id: string; name: string; email: string; role: string }>>("/users", {
+  const payload = {
     name: input.name,
     email: input.email,
     password: input.password,
     role: apiRole,
     modules: input.modules,
     isActive: input.isActive ?? true,
+  };
+
+  const offlinePayload = {
+    id: offlineId(),
+    name: input.name,
+    email: input.email,
+    role: apiRole,
+  };
+
+  const res = await API.post<ApiEnvelope<{ id: string; name: string; email: string; role: string }>>("/users", payload, {
+    offlineData: offlinePayload,
   });
 
   // createUser returns {id,...} not {_id,...}
@@ -638,7 +835,17 @@ export async function updateUser(userId: string, input: Partial<{ name: string; 
   if (input.modules !== undefined) payload.modules = input.modules;
   if (input.isActive !== undefined) payload.isActive = input.isActive;
 
-  const res = await API.put<ApiEnvelope<ApiUser>>(`/users/${userId}`, payload);
+  const offlinePayload: ApiUser = {
+    _id: userId,
+    name: input.name || "User",
+    email: input.email || "",
+    role: input.role ? (input.role === "admin" ? "Admin" : input.role === "finance" ? "Finance" : input.role === "staff" ? "Staff" : "Pastor") : "Staff",
+    modules: input.modules as ApiUserModules[] | undefined,
+    isActive: input.isActive ?? true,
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const res = await API.put<ApiEnvelope<ApiUser>>(`/users/${userId}`, payload, { offlineData: offlinePayload });
   return mapUser(res.data.data);
 }
 
@@ -756,7 +963,33 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
   };
 
   if (payload.id) {
-    const res = await API.put<ApiEnvelope<ApiSettings>>(`/settings/${payload.id}`, body);
+    const offlinePayload: ApiSettings = {
+      _id: payload.id,
+      churchName: payload.churchName,
+      address: payload.address,
+      phone: payload.phone,
+      email: payload.email,
+      smsEnabled: payload.smsEnabled,
+      smsProvider: payload.smsProvider,
+      smsApiKey: payload.smsApiKey,
+      smsSenderId: payload.smsSenderId,
+      departments: payload.departments || [],
+      enableBirthdayNotifications: payload.enableBirthdayNotifications,
+      birthdayMessageTemplate: payload.birthdayMessageTemplate,
+      birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
+      birthdaySendTime: payload.birthdaySendTime,
+      enableProgramReminders: payload.enableProgramReminders,
+      enableMemberAddedNotifications: payload.enableMemberAddedNotifications,
+      enableDonationNotifications: payload.enableDonationNotifications,
+      enableUserAddedNotifications: payload.enableUserAddedNotifications,
+      programNotificationTemplate: payload.programNotificationTemplate,
+      memberAddedNotificationTemplate: payload.memberAddedNotificationTemplate,
+      donationNotificationTemplate: payload.donationNotificationTemplate,
+      userAddedNotificationTemplate: payload.userAddedNotificationTemplate,
+      createdAt: offlineNow(),
+      updatedAt: offlineNow(),
+    };
+    const res = await API.put<ApiEnvelope<ApiSettings>>(`/settings/${payload.id}`, body, { offlineData: offlinePayload });
     return {
       id: res.data.data._id,
       churchName: res.data.data.churchName,
@@ -783,7 +1016,33 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     };
   }
 
-  const res = await API.post<ApiEnvelope<ApiSettings>>("/settings", body);
+  const offlinePayload: ApiSettings = {
+    _id: offlineId(),
+    churchName: payload.churchName,
+    address: payload.address,
+    phone: payload.phone,
+    email: payload.email,
+    smsEnabled: payload.smsEnabled,
+    smsProvider: payload.smsProvider,
+    smsApiKey: payload.smsApiKey,
+    smsSenderId: payload.smsSenderId,
+    departments: payload.departments || [],
+    enableBirthdayNotifications: payload.enableBirthdayNotifications,
+    birthdayMessageTemplate: payload.birthdayMessageTemplate,
+    birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
+    birthdaySendTime: payload.birthdaySendTime,
+    enableProgramReminders: payload.enableProgramReminders,
+    enableMemberAddedNotifications: payload.enableMemberAddedNotifications,
+    enableDonationNotifications: payload.enableDonationNotifications,
+    enableUserAddedNotifications: payload.enableUserAddedNotifications,
+    programNotificationTemplate: payload.programNotificationTemplate,
+    memberAddedNotificationTemplate: payload.memberAddedNotificationTemplate,
+    donationNotificationTemplate: payload.donationNotificationTemplate,
+    userAddedNotificationTemplate: payload.userAddedNotificationTemplate,
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  };
+  const res = await API.post<ApiEnvelope<ApiSettings>>("/settings", body, { offlineData: offlinePayload });
   return {
     id: res.data.data._id,
     churchName: res.data.data.churchName,

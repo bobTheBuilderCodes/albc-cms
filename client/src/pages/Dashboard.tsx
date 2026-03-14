@@ -123,15 +123,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-5 sm:p-6">
+          <div className="bg-white dark:bg-slate-900/70 rounded-2xl border border-neutral-200 dark:border-slate-800 shadow-sm p-5 sm:p-6">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <Cake className="w-5 h-5 text-amber-700" />
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                  <Cake className="w-5 h-5 text-amber-700 dark:text-amber-200" />
                 </div>
-                <h2 className="text-neutral-900 font-semibold">Birthdays This Month</h2>
+                <h2 className="text-neutral-900 dark:text-slate-100 font-semibold">Birthdays This Month</h2>
               </div>
-              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-200">
                 {birthdaysThisMonth.length}
               </span>
             </div>
@@ -143,7 +143,9 @@ export default function Dashboard() {
                   return (
                     <div
                       key={member.id}
-                      className={`flex items-center gap-4 rounded-xl p-4 ${isToday ? "bg-amber-100/70 text-amber-900" : "bg-slate-50/80"}`}
+                      className={`flex items-center gap-4 rounded-xl p-4 birthday-card ${
+                        isToday ? "birthday-card--today text-amber-900 dark:text-amber-100" : ""
+                      }`}
                     >
                       <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex flex-col items-center justify-center shrink-0">
                         <span className="text-[10px] font-semibold uppercase">
@@ -152,10 +154,10 @@ export default function Dashboard() {
                         <span className="text-lg leading-none font-bold">{dob.getDate()}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm sm:text-base font-semibold text-neutral-900 truncate">
+                        <p className="text-sm sm:text-base font-semibold text-neutral-900 dark:text-slate-100 truncate">
                           {member.fullName}
                         </p>
-                        <p className="text-xs sm:text-sm text-neutral-600 truncate">
+                        <p className="text-xs sm:text-sm text-neutral-600 dark:text-slate-300 truncate">
                           {member.department || "General"}
                         </p>
                       </div>
@@ -163,9 +165,9 @@ export default function Dashboard() {
                   );
                 })
               ) : (
-                <div className="rounded-xl p-10 text-center bg-white border border-neutral-200 shadow-sm">
-                  <Cake className="w-8 h-8 mx-auto text-neutral-400 mb-3" />
-                  <p className="text-sm text-neutral-600 font-medium">No birthdays this month</p>
+                <div className="rounded-xl p-10 text-center bg-white border border-neutral-200 shadow-sm dark:bg-slate-900/70 dark:border-slate-800">
+                  <Cake className="w-8 h-8 mx-auto text-neutral-400 dark:text-slate-400 mb-3" />
+                  <p className="text-sm text-neutral-600 dark:text-slate-300 font-medium">No birthdays this month</p>
                 </div>
               )}
             </div>

@@ -648,16 +648,16 @@ function PledgesTab({
 
       <div className="md:hidden space-y-3">
         {pledges.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((pledge) => (
-          <div key={pledge.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+          <div key={pledge.id} className="border border-neutral-200 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/70">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-neutral-900 font-semibold">{pledge.memberName}</p>
-                <p className="text-xs text-neutral-500">{new Date(pledge.pledgeDate).toLocaleDateString()}</p>
+                <p className="text-sm text-neutral-900 dark:text-slate-100 font-semibold">{pledge.memberName}</p>
+                <p className="text-xs text-neutral-500 dark:text-slate-400">{new Date(pledge.pledgeDate).toLocaleDateString()}</p>
               </div>
               <p className="text-sm text-success-600 font-bold">GH₵ {pledge.amount.toFixed(2)}</p>
             </div>
-            <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-neutral-600">
-              <span className="px-2 py-1 rounded-full bg-gray-50 text-primary-700 font-semibold capitalize">
+            <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-neutral-600 dark:text-slate-300">
+              <span className="px-2 py-1 rounded-full bg-gray-50 dark:bg-slate-800 text-primary-700 dark:text-slate-200 font-semibold capitalize">
                 {pledge.status}
               </span>
               {pledge.expectedDate && (
@@ -668,7 +668,7 @@ function PledgesTab({
               {pledge.status !== "paid" && (
                 <button
                   onClick={() => onConvert(pledge.id)}
-                  className="px-3 py-1.5 rounded-lg bg-success-600 text-white text-xs font-semibold"
+                  className="w-full sm:w-auto px-3 py-2 rounded-lg bg-success-600 text-white text-xs font-semibold"
                 >
                   Convert to income
                 </button>

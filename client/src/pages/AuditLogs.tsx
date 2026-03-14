@@ -121,38 +121,32 @@ export function AuditLogs() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-neutral-900 mb-0 text-2xl font-bold">Audit Trail</h1>
-            <p className="text-neutral-600">Track all system activities and changes</p>
+            <p className="text-neutral-600">Track all activities</p>
           </div>
           <button
             onClick={exportLogs}
             className="flex items-center gap-2 px-4 py-2 border border-neutral-300 dark:border-transparent rounded-lg hover:bg-neutral-50 transition-colors"
           >
             <Download className="w-4 h-4" />
-            Export Logs
+            Export
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="border border-gray-200 bg-white from-primary-500 to-primary-600 rounded-xl p-6 text-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <FileText className="w-8 h-8 text-gray-500" />
-            </div>
+           
             <p className="text-3xl mb-1">{logs.length}</p>
             <p className="text-sm text-gray-500">Total Activities</p>
           </div>
 
           <div className="border border-gray-200 bg-white from-info-500  to-info-600 rounded-xl p-6 text-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <User className="w-8 h-8 text-gray-500" />
-            </div>
+            
             <p className="text-3xl mb-1">{uniqueUsers.length}</p>
             <p className="text-sm text-gray-500">Active Users</p>
           </div>
 
           <div className="border border-gray-200 bg-white from-accent-500 to-accent-600 rounded-xl p-6 text-gray-700">
-            <div className="flex items-center justify-between mb-2">
-              <Shield className="w-8 h-8 text-gray-500" />
-            </div>
+           
             <p className="text-3xl mb-1">{filteredLogs.length}</p>
             <p className="text-sm text-gray-500">Filtered Results</p>
           </div>
@@ -212,19 +206,19 @@ export function AuditLogs() {
 
         <div className="md:hidden space-y-3">
           {currentLogs.map((log) => (
-            <div key={log.id} className="border border-neutral-200 rounded-xl p-3 bg-white">
+            <div key={log.id} className="border border-neutral-200 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/70">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs text-neutral-500">{new Date(log.timestamp).toLocaleString()}</p>
-                  <p className="text-sm text-neutral-900">{log.userName}</p>
-                  <p className="text-xs text-neutral-500 capitalize">{log.userRole}</p>
+                  <p className="text-xs text-neutral-500 dark:text-slate-400">{new Date(log.timestamp).toLocaleString()}</p>
+                  <p className="text-sm text-neutral-900 dark:text-slate-100">{log.userName}</p>
+                  <p className="text-xs text-neutral-500 dark:text-slate-400 capitalize">{log.userRole}</p>
                 </div>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${getActionColor(log.action)}`}>
                   {log.action.replace('_', ' ')}
                 </span>
               </div>
-              <p className="mt-2 text-xs text-neutral-600 capitalize">{log.resourceType}</p>
-              <p className="mt-1 text-sm text-neutral-700">{log.details}</p>
+              <p className="mt-2 text-xs text-neutral-600 dark:text-slate-300 capitalize">{log.resourceType}</p>
+              <p className="mt-1 text-sm text-neutral-700 dark:text-slate-200">{log.details}</p>
             </div>
           ))}
         </div>

@@ -31,7 +31,7 @@ const navItems = [
   { to: '/members', icon: Users, label: 'Members', module: 'members' },
   { to: '/programs', icon: Calendar, label: 'Programs', module: 'programs' },
   { to: '/attendance', icon: UserCheck, label: 'Attendance', module: 'attendance' },
-  { to: '/messaging', icon: MessageSquare, label: 'Messaging', module: 'messaging' },
+  { to: '/messaging', icon: MessageSquare, label: 'Bulk SMS', module: 'messaging' },
   { to: '/finance', icon: DollarSign, label: 'Finance', module: 'finance' },
   { to: '/soul-center', icon: UserPlus, label: 'Soul Center', module: 'soulcenter' },
   { to: '/audit', icon: FileText, label: 'Audit Logs', module: 'audit' },

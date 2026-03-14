@@ -1,4 +1,4 @@
-import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon, Menu } from 'lucide-react';
+import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon, Menu, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
@@ -19,6 +19,8 @@ export function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +30,31 @@ export function Header() {
       loadNotifications().catch(() => undefined);
     }, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const updateStandalone = () => {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setIsStandalone(standalone);
+    };
+
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    updateStandalone();
+    window.addEventListener("beforeinstallprompt", handleInstallPrompt);
+    window.addEventListener("appinstalled", updateStandalone);
+    window.matchMedia("(display-mode: standalone)").addEventListener("change", updateStandalone);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+      window.removeEventListener("appinstalled", updateStandalone);
+      window.matchMedia("(display-mode: standalone)").removeEventListener("change", updateStandalone);
+    };
   }, []);
 
   const loadNotifications = async () => {
@@ -92,6 +119,22 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        {!isStandalone && installPrompt && (
+          <button
+            onClick={async () => {
+              await installPrompt.prompt();
+              const choice = await installPrompt.userChoice;
+              if (choice.outcome !== "dismissed") {
+                setInstallPrompt(null);
+              }
+            }}
+            className="md:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-blue-700 transition-colors"
+            title="Install app"
+          >
+            <Download className="w-4 h-4" />
+            Install
+          </button>
+        )}
         <button
           onClick={toggleTheme}
           className="p-2.5 text-neutral-500 bg-gray-200 hover:bg-neutral-100 rounded-xl transition-all"
