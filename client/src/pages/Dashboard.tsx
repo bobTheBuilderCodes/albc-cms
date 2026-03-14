@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowUpRight, Cake, Calendar, Clock, UserCircle2 } from "lucide-react";
+import { ArrowUpRight, Cake, Calendar, Clock, UserCircle2, Download, RefreshCcw } from "lucide-react";
 import type { ChurchProgram, Member } from "../types";
 import { fetchMembers, fetchPrograms, fetchSettings } from "../api/backend";
 import { useAuth } from "../contexts/AuthContext";
@@ -11,6 +11,9 @@ export default function Dashboard() {
   const [members, setMembers] = useState<Member[]>([]);
   const [programs, setPrograms] = useState<ChurchProgram[]>([]);
   const [churchName, setChurchName] = useState("Church");
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -21,6 +24,41 @@ export default function Dashboard() {
     };
 
     load().catch((e) => console.error("Dashboard load failed", e));
+  }, []);
+
+  useEffect(() => {
+    const updateStandalone = () => {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setIsStandalone(standalone);
+    };
+
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const handleUpdateAvailable = () => setUpdateAvailable(true);
+
+    updateStandalone();
+    window.addEventListener("beforeinstallprompt", handleInstallPrompt);
+    window.addEventListener("appinstalled", updateStandalone);
+    window.addEventListener("pwa-update-available", handleUpdateAvailable);
+    window.matchMedia("(display-mode: standalone)").addEventListener("change", updateStandalone);
+
+    navigator.serviceWorker?.getRegistration?.().then((registration) => {
+      if (registration?.waiting) {
+        setUpdateAvailable(true);
+      }
+    });
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+      window.removeEventListener("appinstalled", updateStandalone);
+      window.removeEventListener("pwa-update-available", handleUpdateAvailable);
+      window.matchMedia("(display-mode: standalone)").removeEventListener("change", updateStandalone);
+    };
   }, []);
 
   const today = new Date();
@@ -59,12 +97,53 @@ export default function Dashboard() {
         <div className="absolute inset-0 opacity-20 bg-linear-to-tr from-cyan-400 via-transparent to-blue-300" />
         <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -left-8 -bottom-12 h-40 w-40 rounded-full bg-cyan-300/20 blur-2xl" />
-        <div className="relative z-10 space-y-1">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
           <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-blue-100/80 font-semibold">{churchName}</p>
           <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Welcome {firstName}</h1>
           
           <div className="mt-3 inline-flex items-center rounded-xl bg-white/10 px-3 py-0 text-sm text-blue-50 backdrop-blur-xs">
             Theme for {new Date().getFullYear()}: Growing together in faith and service.
+          </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!isStandalone && installPrompt && (
+              <button
+                onClick={async () => {
+                  await installPrompt.prompt();
+                  const choice = await installPrompt.userChoice;
+                  if (choice.outcome !== "dismissed") {
+                    setInstallPrompt(null);
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 text-white text-sm font-semibold shadow-sm hover:bg-white/25 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Install app
+              </button>
+            )}
+            {isStandalone && (
+              <button
+                onClick={async () => {
+                  if (!updateAvailable) return;
+                  const registration = await navigator.serviceWorker?.getRegistration?.();
+                  if (registration?.waiting) {
+                    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+                    registration.waiting.addEventListener("statechange", () => {
+                      if (registration.waiting?.state === "activated") {
+                        window.location.reload();
+                      }
+                    });
+                  }
+                }}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-colors ${
+                  updateAvailable ? "bg-amber-400/90 text-slate-900 hover:bg-amber-300" : "bg-white/10 text-white/70"
+                }`}
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Update
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -92,7 +171,7 @@ export default function Dashboard() {
                 upcomingPrograms.map((program) => (
                   <div
                     key={program.id}
-                    className="flex items-start gap-4 rounded-xl p-4 bg-slate-50/80"
+                    className="flex items-start gap-4 rounded-xl p-4 program-card"
                   >
                     <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex flex-col items-center justify-center shrink-0">
                       <span className="text-[10px] font-semibold uppercase">

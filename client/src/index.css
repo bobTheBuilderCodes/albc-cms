@@ -240,6 +240,14 @@
     background: rgba(120, 53, 15, 0.45);
   }
 
+  .program-card {
+    background: rgba(248, 250, 252, 0.85);
+  }
+
+  html.dark .program-card {
+    background: #0f1d33;
+  }
+
   html.dark .text-primary-600,
   html.dark .text-primary-700 {
     color: #67e8f9 !important;

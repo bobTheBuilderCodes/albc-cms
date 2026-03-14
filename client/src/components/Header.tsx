@@ -1,4 +1,4 @@
-import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon, Menu, Download } from 'lucide-react';
+import { Bell, LogOut, User, ChevronDown, Check, Sun, Moon, Menu, Download, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
@@ -21,6 +21,8 @@ export function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIosHint, setShowIosHint] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,6 +46,10 @@ export function Header() {
       event.preventDefault();
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
+
+    const ua = window.navigator.userAgent;
+    const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    setIsIOS(ios);
 
     updateStandalone();
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
@@ -119,21 +125,53 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {!isStandalone && installPrompt && (
-          <button
-            onClick={async () => {
-              await installPrompt.prompt();
-              const choice = await installPrompt.userChoice;
-              if (choice.outcome !== "dismissed") {
-                setInstallPrompt(null);
-              }
-            }}
-            className="md:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-blue-700 transition-colors"
-            title="Install app"
-          >
-            <Download className="w-4 h-4" />
-            Install
-          </button>
+        {!isStandalone && (
+          <>
+            {installPrompt && (
+              <button
+                onClick={async () => {
+                  await installPrompt.prompt();
+                  const choice = await installPrompt.userChoice;
+                  if (choice.outcome !== "dismissed") {
+                    setInstallPrompt(null);
+                  }
+                }}
+                className="md:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-blue-700 transition-colors"
+                title="Install app"
+              >
+                <Download className="w-4 h-4" />
+                Install
+              </button>
+            )}
+            {!installPrompt && isIOS && (
+              <div className="relative md:hidden">
+                <button
+                  onClick={() => setShowIosHint((prev) => !prev)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/90 dark:bg-slate-900/80 border border-neutral-200 dark:border-slate-800 text-xs font-semibold text-neutral-700 dark:text-slate-200 shadow-sm"
+                  title="How to install on iPhone"
+                >
+                  <Info className="w-4 h-4" />
+                  Install help
+                </button>
+                {showIosHint && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowIosHint(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-64 z-20 rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 shadow-xl p-3 text-xs text-neutral-700 dark:text-slate-200">
+                      <p className="font-semibold mb-2">Install on iPhone</p>
+                      <ol className="list-decimal pl-4 space-y-1">
+                        <li>Open this site in Safari.</li>
+                        <li>Tap the Share icon.</li>
+                        <li>Select “Add to Home Screen”.</li>
+                      </ol>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </>
         )}
         <button
           onClick={toggleTheme}

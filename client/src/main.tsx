@@ -13,6 +13,7 @@ if ("serviceWorker" in navigator) {
       .then((registration) => {
         if (registration.waiting) {
           emitToast("update", "Update available. Refresh to get the latest version.");
+          window.dispatchEvent(new CustomEvent("pwa-update-available"));
         }
 
         registration.addEventListener("updatefound", () => {
@@ -22,6 +23,7 @@ if ("serviceWorker" in navigator) {
           installing.addEventListener("statechange", () => {
             if (installing.state === "installed" && navigator.serviceWorker.controller) {
               emitToast("update", "Update available. Refresh to get the latest version.");
+              window.dispatchEvent(new CustomEvent("pwa-update-available"));
             }
           });
         });

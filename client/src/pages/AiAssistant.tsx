@@ -182,7 +182,6 @@ export function AiAssistant() {
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-70"
             >
               <SendHorizontal className="w-4 h-4" />
-              {isSending ? "Sending..." : "Send"}
             </button>
           </div>
         </div>
