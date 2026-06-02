@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Church, Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,6 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const toast = useToast();
@@ -22,7 +21,7 @@ export default function Login() {
       setIsLoading(true);
       await login(email, password);
       toast.success("Login successful");
-      navigate("/dashboard");
+      navigate("/messaging");
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Login failed");
     } finally {
@@ -42,7 +41,7 @@ export default function Login() {
               Welcome Back
             </h1>
             <p className="text-gray-600">
-              Sign in to Church Management System
+              Sign in to SMS & Birthday Reminders
             </p>
           </div>
 
@@ -154,10 +153,10 @@ export default function Login() {
         <div className="relative z-10 flex flex-col items-center justify-center px-8 text-center text-white">
           <Church className="w-20 h-20 mb-6 opacity-90" />
           <h2 className="text-4xl font-bold mb-4">
-            Church Management
+            SMS & Birthday Reminders
           </h2>
           <p className="text-lg text-blue-100 max-w-sm leading-relaxed">
-            Manage your church community with ease and efficiency. Access all your tools in one place.
+            Send bulk messages, manage members, and automate birthday wishes in one focused app.
           </p>
         </div>
       </div>

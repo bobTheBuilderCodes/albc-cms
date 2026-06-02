@@ -1,22 +1,13 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { Root } from "./components/Root";
-import { Members } from "./pages/Members";
-import { MemberProfile } from "./pages/MemberProfile";
-import { Programs } from "./pages/Programs";
-import { Attendance } from "./pages/Attendance";
 import { Messaging } from "./pages/Messaging";
-import { Finance } from "./pages/Finance";
-import { AuditLogs } from "./pages/AuditLogs";
+import { SmsLogs } from "./pages/SmsLogs";
+import { Templates } from "./pages/Templates";
 import { Settings } from "./pages/Settings";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import { Analytics } from "./pages/Analytics";
-import { UserManagement } from "./pages/UserManagement";
 import { ModuleGuard } from "./components/ModuleGuard";
-import { ProfileSettings } from "./pages/ProfileSettings";
-import { NotificationsConfiguration } from "./pages/NotificationsConfiguration";
-import { AiAssistant } from "./pages/AiAssistant";
-import { SoulCenter } from "./pages/SoulCenter";
+import { Members } from "./pages/Members";
+import { Automation, AutomationNew } from "./pages/Automation";
 
 export const router = createBrowserRouter([
   {
@@ -29,25 +20,21 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
+        element: <Navigate to="/messaging" replace />,
+      },
+      {
+        path: "messaging",
         element: (
-          <ModuleGuard module="dashboard">
-            <Dashboard />
+          <ModuleGuard module="messaging">
+            <Messaging />
           </ModuleGuard>
         ),
       },
       {
-        path: "analytics",
+        path: "sms-logs",
         element: (
-          <ModuleGuard module="analytics">
-            <Analytics />
-          </ModuleGuard>
-        ),
-      },
-      {
-        path: "assistant",
-        element: (
-          <ModuleGuard module="dashboard">
-            <AiAssistant />
+          <ModuleGuard module="messaging">
+            <SmsLogs />
           </ModuleGuard>
         ),
       },
@@ -60,66 +47,34 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "members/:memberId",
+        path: "automation",
         element: (
-          <ModuleGuard module="members">
-            <MemberProfile />
+          <ModuleGuard module="automation">
+            <Automation />
           </ModuleGuard>
         ),
       },
       {
-        path: "programs",
+        path: "automation/new",
         element: (
-          <ModuleGuard module="programs">
-            <Programs />
+          <ModuleGuard module="automation">
+            <AutomationNew />
           </ModuleGuard>
         ),
       },
       {
-        path: "attendance",
+        path: "automation/:automationId/edit",
         element: (
-          <ModuleGuard module="attendance">
-            <Attendance />
+          <ModuleGuard module="automation">
+            <AutomationNew />
           </ModuleGuard>
         ),
       },
       {
-        path: "messaging",
+        path: "templates",
         element: (
           <ModuleGuard module="messaging">
-            <Messaging />
-          </ModuleGuard>
-        ),
-      },
-      {
-        path: "finance",
-        element: (
-          <ModuleGuard module="finance">
-            <Finance />
-          </ModuleGuard>
-        ),
-      },
-      {
-        path: "soul-center",
-        element: (
-          <ModuleGuard module="soulcenter">
-            <SoulCenter />
-          </ModuleGuard>
-        ),
-      },
-      {
-        path: "audit",
-        element: (
-          <ModuleGuard module="audit">
-            <AuditLogs />
-          </ModuleGuard>
-        ),
-      },
-      {
-        path: "user-management",
-        element: (
-          <ModuleGuard module="users">
-            <UserManagement />
+            <Templates />
           </ModuleGuard>
         ),
       },
@@ -132,20 +87,8 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "notifications-configuration",
-        element: (
-          <ModuleGuard module="settings">
-            <NotificationsConfiguration />
-          </ModuleGuard>
-        ),
-      },
-      {
-        path: "profile-settings",
-        element: <ProfileSettings />,
-      },
-      {
         path: "*",
-        element: <Navigate to="/" replace />,
+        element: <Navigate to="/messaging" replace />,
       },
     ],
   },

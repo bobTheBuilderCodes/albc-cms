@@ -496,6 +496,7 @@ function ConvertVisitorModal({
     phone: visitor.phone || "",
     email: visitor.email || "",
     department: "",
+    departments: [] as string[],
     gender: "male",
     maritalStatus: "single",
     membershipStatus: "active",
@@ -509,10 +510,42 @@ function ConvertVisitorModal({
       .then((settings) => {
         if (settings?.departments && settings.departments.length > 0) {
           setDepartments(settings.departments);
+          setForm((prev) => {
+            if (prev.departments.length > 0 || prev.department) return prev;
+            return { ...prev, department: settings.departments[0], departments: [settings.departments[0]] };
+          });
         }
       })
       .catch(() => undefined);
   }, []);
+
+  const selectedDepartments = Array.from(
+    new Set(
+      (form.departments.length ? form.departments : form.department ? [form.department] : [])
+        .map((dept) => String(dept || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  const toggleDepartment = (dept: string) => {
+    setForm((prev) => {
+      const current = Array.from(
+        new Set(
+          (prev.departments.length ? prev.departments : prev.department ? [prev.department] : [])
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+        )
+      );
+      const next = current.includes(dept)
+        ? current.filter((value) => value !== dept)
+        : [...current, dept];
+      return {
+        ...prev,
+        department: next[0] || "",
+        departments: next,
+      };
+    });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -598,20 +631,32 @@ function ConvertVisitorModal({
                 <option value="inactive">Inactive</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm text-neutral-700 mb-2 font-semibold">Department</label>
-              <select
-                value={form.department}
-                onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))}
-                className="border border-neutral-300 rounded-lg px-3 py-2 w-full"
-              >
-                <option value="">Select department</option>
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-neutral-700 mb-2 font-semibold">Departments</label>
+              <p className="text-xs text-neutral-500 mb-3">Select one or more departments.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3">
+                {departments.map((dept) => {
+                  const checked = selectedDepartments.includes(dept);
+                  return (
+                    <label
+                      key={dept}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer transition-colors ${
+                        checked
+                          ? "bg-primary-50 text-primary-900"
+                          : "hover:bg-neutral-50 text-neutral-700"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleDepartment(dept)}
+                        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-medium">{dept}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

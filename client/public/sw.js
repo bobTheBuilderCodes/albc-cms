@@ -1,5 +1,5 @@
-const CACHE_NAME = "albc-pwa-v1";
-const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/pwa-192.svg", "/pwa-512.svg"];
+const CACHE_NAME = "albc-pwa-v3";
+const PRECACHE_URLS = ["/index.html", "/manifest.webmanifest", "/logo.jpg"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -35,17 +35,30 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const isAssetRequest =
+    event.request.destination === "script" ||
+    event.request.destination === "style" ||
+    event.request.destination === "worker" ||
+    url.pathname.startsWith("/assets/");
+
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
           return response;
         })
         .catch(() =>
-          caches.match(event.request).then((cached) => cached || caches.match("/"))
+          caches.match("/index.html").then((cached) => cached || caches.match("/"))
         )
+    );
+    return;
+  }
+
+  if (isAssetRequest) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }

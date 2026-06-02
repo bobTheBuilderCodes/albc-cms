@@ -31,6 +31,7 @@ const allModules: Array<{ id: ModulePermission; label: string; description: stri
   { id: 'finance', label: 'Finance', description: 'Manage donations and expenditures' },
   { id: 'soulcenter', label: 'Soul Center', description: 'Track visitors and convert them to members' },
   { id: 'audit', label: 'Audit Logs', description: 'View system activity logs' },
+  { id: 'automation', label: 'Automation', description: 'Automate SMS notifications and reminders' },
   { id: 'users', label: 'User Management', description: 'Manage system users and permissions' },
   { id: 'settings', label: 'Settings', description: 'Configure system settings' },
 ];

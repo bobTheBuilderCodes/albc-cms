@@ -13,6 +13,33 @@ const defaultDonationNotificationTemplate =
   "Hello {{member_name}},\nA new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}";
 const defaultUserAddedNotificationTemplate =
   "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}";
+const sanitizeAutomationRule = (automation: any) => {
+  if (!automation || typeof automation !== "object") return null;
+  const id = String(automation.id || automation._id || "").trim();
+  if (!id) return null;
+  return {
+    id,
+    name: String(automation.name || "").trim(),
+    templateId: String(automation.templateId || "").trim(),
+    templateName: String(automation.templateName || "").trim(),
+    templateContent: String(automation.templateContent || "").trim(),
+    conditionType: automation.conditionType,
+    audienceType: automation.audienceType,
+    audienceDepartment: String(automation.audienceDepartment || "").trim() || undefined,
+    manualNumbers: String(automation.manualNumbers || "").trim() || undefined,
+    scheduleLabel: String(automation.scheduleLabel || "").trim(),
+    dayOfWeek: Array.isArray(automation.dayOfWeek)
+      ? automation.dayOfWeek.map((day: string) => String(day || "").trim()).filter(Boolean)
+      : [],
+    dayOfMonth: automation.dayOfMonth === undefined ? undefined : Number(automation.dayOfMonth),
+    customRule: String(automation.customRule || "").trim() || undefined,
+    sendTime: String(automation.sendTime || "08:00").trim() || "08:00",
+    isActive: automation.isActive === undefined ? true : Boolean(automation.isActive),
+    lastRunAt: automation.lastRunAt ? new Date(automation.lastRunAt) : undefined,
+    lastRunKey: String(automation.lastRunKey || "").trim() || undefined,
+    createdBy: String(automation.createdBy || "").trim() || undefined,
+  };
+};
 
 export const createSettings = asyncHandler(async (req: Request, res: Response) => {
   const existingSettings = await Settings.findOne();
@@ -80,6 +107,9 @@ const settings = await Settings.create({
       req.body.userAddedNotificationTemplate.trim().length > 0
         ? req.body.userAddedNotificationTemplate.trim()
         : defaultUserAddedNotificationTemplate,
+    automations: Array.isArray(req.body.automations)
+      ? req.body.automations.map(sanitizeAutomationRule).filter(Boolean)
+      : [],
   });
 
   res.status(201).json({ success: true, data: settings });
@@ -138,6 +168,11 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   }
   if (isDefined(req.body.userAddedNotificationTemplate)) {
     updates.userAddedNotificationTemplate = String(req.body.userAddedNotificationTemplate || "").trim();
+  }
+  if (isDefined(req.body.automations)) {
+    updates.automations = Array.isArray(req.body.automations)
+      ? req.body.automations.map(sanitizeAutomationRule).filter(Boolean)
+      : [];
   }
 
   const settings = await Settings.findByIdAndUpdate(req.params.id, updates, {

@@ -11,23 +11,24 @@ type ModuleGuardProps = {
 export function ModuleGuard({ module, children }: ModuleGuardProps) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const moduleRouteMap: Record<ModulePermission, string> = {
-    dashboard: "/",
-    analytics: "/analytics",
     members: "/members",
-    programs: "/programs",
-    attendance: "/attendance",
     messaging: "/messaging",
-    finance: "/finance",
-    soulcenter: "/soul-center",
-    audit: "/audit",
+    automation: "/automation",
     settings: "/settings",
-    users: "/user-management",
+    dashboard: "/messaging",
+    analytics: "/messaging",
+    programs: "/messaging",
+    attendance: "/messaging",
+    finance: "/messaging",
+    soulcenter: "/messaging",
+    audit: "/messaging",
+    users: "/messaging",
   };
 
   if (isLoading) return null;
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
   if (!user.modules.includes(module)) {
-    const fallback = user.modules.length > 0 ? moduleRouteMap[user.modules[0]] : "/login";
+    const fallback = user.modules.length > 0 && moduleRouteMap[user.modules[0]] ? moduleRouteMap[user.modules[0]] : "/messaging";
     return <Navigate to={fallback} replace />;
   }
 

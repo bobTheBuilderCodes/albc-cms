@@ -39,6 +39,11 @@ const getInitialGradientClass = (value: string): string => {
   return darkInitialGradients[hash % darkInitialGradients.length];
 };
 
+const getMemberDepartments = (member: Partial<Pick<Member, "department" | "departments">>): string[] => {
+  const list = member.departments?.length ? member.departments : member.department ? [member.department] : [];
+  return Array.from(new Set(list.map((dept) => String(dept || "").trim()).filter(Boolean)));
+};
+
 export function Members() {
   const [members, setMembers] = useState<Member[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
@@ -76,6 +81,10 @@ export function Members() {
     filterMembers();
   }, [members, searchQuery, statusFilter, departmentFilter]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, departmentFilter]);
+
  
 
   const filterMembers = () => {
@@ -86,7 +95,8 @@ export function Members() {
         (m) =>
           m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          m.phoneNumber.includes(searchQuery)
+          m.phoneNumber.includes(searchQuery) ||
+          getMemberDepartments(m).join(" ").toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -95,13 +105,13 @@ export function Members() {
     }
 
     if (departmentFilter !== "all") {
-      filtered = filtered.filter((m) => m.department === departmentFilter);
+      filtered = filtered.filter((m) => getMemberDepartments(m).includes(departmentFilter));
     }
 
     setFilteredMembers(filtered);
   };
 
-  const departments = Array.from(new Set(members.map((m) => m.department)));
+  const departments = Array.from(new Set(members.flatMap((m) => getMemberDepartments(m))));
 
   const deleteMember = async (id: string) => {
     const confirmed = await confirm({
@@ -143,7 +153,7 @@ export function Members() {
       m.fullName,
       m.email,
       m.phoneNumber,
-      m.department,
+      getMemberDepartments(m).join(" / "),
       m.membershipStatus,
       m.joinDate,
     ]);
@@ -264,7 +274,7 @@ export function Members() {
                 <div className="mt-2 space-y-1 text-xs text-neutral-600">
                   <p className="truncate">{member.email}</p>
                   <p>{member.phoneNumber}</p>
-                  <p>{member.department}</p>
+                  <p>{getMemberDepartments(member).join(", ") || "General"}</p>
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2">
                   <button
@@ -368,9 +378,30 @@ export function Members() {
                       </div>
                     </td>
                     <td className="hidden lg:table-cell px-6 py-4">
-                      <span className="text-sm text-neutral-700">
-                        {member.department}
-                      </span>
+                      {(() => {
+                        const memberDepartments = getMemberDepartments(member);
+                        const primaryDepartment = memberDepartments[0] || "General";
+                        const extraDepartments = memberDepartments.slice(1);
+
+                        return (
+                          <div className="group relative inline-flex max-w-full">
+                            <span className="max-w-[220px] truncate text-sm text-neutral-700 dark:text-slate-200">
+                              {primaryDepartment}
+                            </span>
+                            {extraDepartments.length > 0 && (
+                              <span className="ml-2 inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-slate-800 dark:text-slate-200">
+                                +{extraDepartments.length}
+                              </span>
+                            )}
+                            {extraDepartments.length > 0 && (
+                              <div className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden min-w-56 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700 shadow-xl group-hover:block dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                <p className="mb-1 font-semibold text-neutral-900 dark:text-slate-100">Departments</p>
+                                <p className="leading-5">{memberDepartments.join(", ")}</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -534,6 +565,11 @@ export function MemberModal({
   onSave: (member: Member) => void;
 }) {
   const [departments, setDepartments] = useState<string[]>([]);
+  const initialDepartments = member?.departments?.length
+    ? member.departments
+    : member?.department
+      ? [member.department]
+      : [];
   const [formData, setFormData] = useState<Partial<Member>>(
     member || {
       fullName: "",
@@ -543,6 +579,7 @@ export function MemberModal({
       gender: "male",
       maritalStatus: "single",
       department: "",
+      departments: [],
       membershipStatus: "active",
       joinDate: new Date().toISOString().split("T")[0],
       address: "",
@@ -558,14 +595,47 @@ export function MemberModal({
     setDepartments(depts);
 
     // Set default department if creating a new member
-    if (!member && !formData.department && depts.length > 0) {
-      setFormData((prev) => ({ ...prev, department: depts[0] }));
+    if (!member && initialDepartments.length === 0 && depts.length > 0) {
+      setFormData((prev) => ({ ...prev, department: depts[0], departments: [depts[0]] }));
     }
   }, []);
 
+  const selectedDepartments = Array.from(
+    new Set(
+      (formData.departments?.length ? formData.departments : formData.department ? [formData.department] : [])
+        .map((dept) => String(dept || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  const toggleDepartment = (dept: string) => {
+    setFormData((prev) => {
+      const current = Array.from(
+        new Set(
+          ((prev.departments?.length ? prev.departments : prev.department ? [prev.department] : []) || [])
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+        )
+      );
+      const next = current.includes(dept)
+        ? current.filter((value) => value !== dept)
+        : [...current, dept];
+      return {
+        ...prev,
+        department: next[0] || "",
+        departments: next,
+      };
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...formData, updatedAt: new Date().toISOString() } as Member);
+    onSave({
+      ...formData,
+      department: selectedDepartments[0] || "",
+      departments: selectedDepartments,
+      updatedAt: new Date().toISOString(),
+    } as Member);
   };
 
   return (
@@ -684,24 +754,36 @@ export function MemberModal({
               </select>
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-sm text-neutral-700 mb-2">
-                Department *
+                Departments *
               </label>
-              <select
-                value={formData.department}
-                onChange={(e) =>
-                  setFormData({ ...formData, department: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                required
-              >
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+              <p className="text-xs text-neutral-500 mb-3">
+                Select one or more departments.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3">
+                {departments.map((dept) => {
+                  const checked = selectedDepartments.includes(dept);
+                  return (
+                    <label
+                      key={dept}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 cursor-pointer transition-colors ${
+                        checked
+                          ? "bg-primary-50 text-primary-900"
+                          : "hover:bg-neutral-50 text-neutral-700"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleDepartment(dept)}
+                        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-medium">{dept}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <div>
@@ -889,7 +971,7 @@ function BulkUploadModal({
           return;
         }
 
-        const parsedMembers: Partial<Member>[] = dataRows.map((row, index) => {
+        const parsedMembers: Partial<Member>[] = dataRows.map((row) => {
           const member: Partial<Member> = {
             fullName: row[headers.indexOf("Full Name")] || "",
             email: row[headers.indexOf("Email")] || "",
@@ -1029,7 +1111,9 @@ function BulkUploadModal({
                         <p className="text-xs text-neutral-600">{member.email}</p>
                         <p className="text-xs text-neutral-600">{member.phoneNumber}</p>
                         <div className="mt-1 flex items-center justify-between">
-                          <span className="text-xs text-neutral-600">{member.department}</span>
+                          <span className="text-xs text-neutral-600">
+                            {getMemberDepartments(member).join(", ") || "General"}
+                          </span>
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
                               member.membershipStatus === "active"
@@ -1075,9 +1159,9 @@ function BulkUploadModal({
                           <td className="px-3 py-2 text-neutral-700">
                             {member.phoneNumber}
                           </td>
-                          <td className="px-3 py-2 text-neutral-700">
-                            {member.department}
-                          </td>
+                      <td className="px-3 py-2 text-neutral-700">
+                        {getMemberDepartments(member).join(", ") || "General"}
+                      </td>
                           <td className="px-3 py-2">
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${

@@ -208,7 +208,7 @@ export function MemberProfile() {
                   <h1 className="text-white text-xl sm:text-3xl mb-3 font-bold">{member.fullName}</h1>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
                     <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white rounded-lg text-sm font-semibold">
-                      {member.department}
+                      {member.departments?.length ? member.departments.join(", ") : member.department}
                     </span>
                     <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${
                       member.membershipStatus === 'active'

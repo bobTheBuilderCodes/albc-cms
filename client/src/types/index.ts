@@ -10,6 +10,7 @@ export type ModulePermission =
   | 'finance'
   | 'soulcenter'
   | 'audit'
+  | 'automation'
   | 'settings'
   | 'users';
 
@@ -43,6 +44,7 @@ export interface Member {
   gender: Gender;
   maritalStatus: MaritalStatus;
   department: string;
+  departments: string[];
   membershipStatus: MembershipStatus;
   joinDate: string;
   address?: string;
@@ -68,6 +70,32 @@ export interface ChurchProgram {
   updatedAt: string;
 }
 
+export type AutomationConditionType = 'weekly' | 'monthly' | 'custom';
+export type AutomationAudienceType = 'all' | 'department' | 'manual';
+
+export interface Automation {
+  id: string;
+  name: string;
+  templateId: string;
+  templateName: string;
+  templateContent: string;
+  conditionType: AutomationConditionType;
+  audienceType: AutomationAudienceType;
+  audienceDepartment?: string;
+  manualNumbers?: string;
+  scheduleLabel: string;
+  dayOfWeek?: string[];
+  dayOfMonth?: number;
+  customRule?: string;
+  sendTime?: string;
+  isActive: boolean;
+  description?: string;
+  lastRunAt?: string | null;
+  lastRunKey?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Attendance {
   id: string;
   programId: string;
@@ -80,7 +108,7 @@ export interface Attendance {
 }
 
 export type SMSStatus = 'sent' | 'failed' | 'pending';
-export type SMSType = 'program_reminder' | 'birthday' | 'manual' | 'announcement';
+export type SMSType = 'program_reminder' | 'birthday' | 'manual' | 'announcement' | 'automation';
 
 export interface SMSLog {
   id: string;

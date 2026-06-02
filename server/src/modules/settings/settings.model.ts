@@ -1,5 +1,31 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export type AutomationConditionType = "weekly" | "monthly" | "custom";
+export type AutomationAudienceType = "all" | "department" | "manual";
+
+export interface IAutomationRule {
+  id: string;
+  name: string;
+  templateId: string;
+  templateName: string;
+  templateContent: string;
+  conditionType: AutomationConditionType;
+  audienceType: AutomationAudienceType;
+  audienceDepartment?: string;
+  manualNumbers?: string;
+  scheduleLabel: string;
+  dayOfWeek?: string[];
+  dayOfMonth?: number;
+  customRule?: string;
+  sendTime?: string;
+  isActive: boolean;
+  lastRunAt?: Date;
+  lastRunKey?: string;
+  createdBy?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface ISettings extends Document {
   churchName: string;
   address?: string;
@@ -22,7 +48,32 @@ export interface ISettings extends Document {
   memberAddedNotificationTemplate: string;
   donationNotificationTemplate: string;
   userAddedNotificationTemplate: string;
+  automations: IAutomationRule[];
 }
+
+const automationRuleSchema = new Schema<IAutomationRule>(
+  {
+    id: { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true },
+    templateId: { type: String, required: true, trim: true },
+    templateName: { type: String, required: true, trim: true },
+    templateContent: { type: String, required: true, trim: true },
+    conditionType: { type: String, enum: ["weekly", "monthly", "custom"], required: true },
+    audienceType: { type: String, enum: ["all", "department", "manual"], required: true },
+    audienceDepartment: { type: String, trim: true },
+    manualNumbers: { type: String, trim: true },
+    scheduleLabel: { type: String, required: true, trim: true },
+    dayOfWeek: [{ type: String, trim: true }],
+    dayOfMonth: { type: Number },
+    customRule: { type: String, trim: true },
+    sendTime: { type: String, trim: true, default: "08:00" },
+    isActive: { type: Boolean, default: true },
+    lastRunAt: { type: Date },
+    lastRunKey: { type: String, trim: true },
+    createdBy: { type: String, trim: true },
+  },
+  { _id: false, timestamps: true }
+);
 
 const settingsSchema = new Schema<ISettings>(
   {
@@ -71,6 +122,7 @@ const settingsSchema = new Schema<ISettings>(
       default:
         "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}",
     },
+    automations: { type: [automationRuleSchema], default: [] },
   },
   { timestamps: true }
 );

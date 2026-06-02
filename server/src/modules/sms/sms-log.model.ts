@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type SmsLogType = "program_reminder" | "birthday" | "manual" | "announcement";
+export type SmsLogType = "program_reminder" | "birthday" | "manual" | "announcement" | "automation";
 export type SmsLogStatus = "sent" | "failed" | "pending";
 
 export interface ISmsLog extends Document {
@@ -26,7 +26,7 @@ const smsLogSchema = new Schema<ISmsLog>(
     message: { type: String, required: true, trim: true },
     type: {
       type: String,
-      enum: ["program_reminder", "birthday", "manual", "announcement"],
+      enum: ["program_reminder", "birthday", "manual", "announcement", "automation"],
       default: "manual",
     },
     status: { type: String, enum: ["sent", "failed", "pending"], default: "pending" },

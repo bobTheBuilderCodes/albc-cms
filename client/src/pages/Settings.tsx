@@ -9,10 +9,7 @@ import {
   Settings as SettingsIcon, 
   Bell, 
   Shield, 
-  Database,
-  AlertTriangle,
   Save,
-  RefreshCw,
   Layers,
   Plus,
   Trash2,
@@ -231,34 +228,11 @@ export function Settings() {
     });
   };
 
-  const clearAllData = async () => {
-    const confirmed = await confirm({
-      title: "Clear All Local Data",
-      message: "Are you sure you want to clear all data? This action cannot be undone!",
-      confirmText: "Clear",
-      danger: true,
-    });
-    if (!confirmed) return;
-    
-    const keys = [
-      'cms_members',
-      'cms_programs',
-      'cms_attendance',
-      'cms_sms_logs',
-      'cms_donations',
-      'cms_audit_logs'
-    ];
-    
-    keys.forEach(key => localStorage.removeItem(key));
-    toast.success('All local data has been cleared');
-    window.location.reload();
-  };
-
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-neutral-900 mb-0 text-xl sm:text-2xl font-bold">Settings</h1>
-        <p className="text-neutral-600">Configure church info</p>
+        <p className="text-neutral-600">Configure SMS and birthday reminders</p>
       </div>
 
       <div className="space-y-6">
@@ -317,15 +291,15 @@ export function Settings() {
           </div>
         </div>
 
-        {/* Notification Settings */}
+        {/* Birthday Notifications */}
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-info-100 rounded-lg flex items-center justify-center">
               <Bell className="w-5 h-5 text-info-600" />
             </div>
             <div>
-              <h3 className="text-neutral-900 font-semibold">Notification Settings</h3>
-              <p className="text-sm text-neutral-600">Configure automatic SMS</p>
+              <h3 className="text-neutral-900 font-semibold">Birthday Notifications</h3>
+              <p className="text-sm text-neutral-600">Configure birthday SMS reminders</p>
             </div>
           </div>
 
@@ -385,87 +359,6 @@ export function Settings() {
                     />
                   </div>
                 </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-              <div>
-                <p className="text-sm text-neutral-900">Program Reminders</p>
-                <p className="text-xs text-neutral-600">Send reminders for upcoming programs</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.enableProgramReminders}
-                  onChange={(e) => setSettings({ ...settings, enableProgramReminders: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-              <div>
-                <p className="text-sm text-neutral-900">New Member Notifications</p>
-                <p className="text-xs text-neutral-600">Notify when a new member is added to the system</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.enableMemberAddedNotifications}
-                  onChange={(e) => setSettings({ ...settings, enableMemberAddedNotifications: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-              <div>
-                <p className="text-sm text-neutral-900">Donation Notifications</p>
-                <p className="text-xs text-neutral-600">Notify when a donation is recorded for a member</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.enableDonationNotifications}
-                  onChange={(e) => setSettings({ ...settings, enableDonationNotifications: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-              <div>
-                <p className="text-sm text-neutral-900">User Account Notifications</p>
-                <p className="text-xs text-neutral-600">Send credentials email when a user account is created</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.enableUserAddedNotifications}
-                  onChange={(e) => setSettings({ ...settings, enableUserAddedNotifications: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-700"></div>
-              </label>
-            </div>
-
-            {settings.enableProgramReminders && (
-              <div>
-                <label className="block text-sm text-neutral-700 mb-2">Send reminder (days before)</label>
-                <select
-                  value={settings.reminderDaysBefore}
-                  onChange={(e) => setSettings({ ...settings, reminderDaysBefore: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="0">Same day</option>
-                  <option value="1">1 day before</option>
-                  <option value="2">2 days before</option>
-                  <option value="3">3 days before</option>
-                  <option value="7">1 week before</option>
-                </select>
               </div>
             )}
           </div>

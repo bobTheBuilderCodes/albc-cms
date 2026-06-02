@@ -26,10 +26,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const modulesByRole: Record<User["role"], User["modules"]> = {
-    admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "soulcenter", "audit", "settings", "users"],
-    pastor: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter", "audit"],
-    finance: ["dashboard", "analytics", "finance", "audit", "members"],
-    staff: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter"],
+    admin: ["members", "messaging", "automation", "settings"],
+    pastor: ["members", "messaging"],
+    finance: ["members", "messaging"],
+    staff: ["members", "messaging"],
   };
 
   const hydrateFromToken = (token: string): User | null => {
@@ -56,13 +56,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const normalizeUser = (raw: any): User => {
     const role = mapRole(raw?.role);
     const now = new Date().toISOString();
+    const allowedModules = modulesByRole[role];
+    const rawModules = Array.isArray(raw?.modules) ? raw.modules.filter((module: unknown) => allowedModules.includes(module as User["modules"][number])) : [];
+    const mergedModules = Array.from(new Set([...rawModules, ...allowedModules]));
 
     return {
       id: String(raw?.id || ""),
       name: String(raw?.name || "User"),
       email: String(raw?.email || ""),
       role,
-      modules: Array.isArray(raw?.modules) && raw.modules.length > 0 ? raw.modules : modulesByRole[role],
+      modules: mergedModules,
       isActive: raw?.isActive === undefined ? true : Boolean(raw.isActive),
       createdAt: raw?.createdAt || now,
       updatedAt: raw?.updatedAt || now,

@@ -1,22 +1,15 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router';
 import { 
-  LayoutDashboard, 
-  BarChart3,
   Users, 
-  Calendar, 
-  UserCheck, 
   MessageSquare, 
-  DollarSign, 
+  List,
   FileText,
   Settings,
+  Bot,
   ChevronLeft,
   ChevronRight,
   X,
-  UserCog,
-  BellRing,
-  Sparkles,
-  UserPlus
 } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,18 +18,11 @@ import { fetchSettings } from '../api/backend';
 import { useTheme } from '../contexts/ThemeContext';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Home', exact: true, module: 'dashboard' },
-  { to: '/assistant', icon: Sparkles, label: 'AI Assistant', module: 'dashboard' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics', module: 'analytics' },
   { to: '/members', icon: Users, label: 'Members', module: 'members' },
-  { to: '/programs', icon: Calendar, label: 'Programs', module: 'programs' },
-  { to: '/attendance', icon: UserCheck, label: 'Attendance', module: 'attendance' },
   { to: '/messaging', icon: MessageSquare, label: 'Bulk SMS', module: 'messaging' },
-  { to: '/finance', icon: DollarSign, label: 'Finance', module: 'finance' },
-  { to: '/soul-center', icon: UserPlus, label: 'Soul Center', module: 'soulcenter' },
-  { to: '/audit', icon: FileText, label: 'Audit Logs', module: 'audit' },
-  { to: '/user-management', icon: UserCog, label: 'User Management', module: 'users' },
-  { to: '/notifications-configuration', icon: BellRing, label: 'Notifications Config', module: 'settings' },
+  { to: '/sms-logs', icon: List, label: 'SMS Logs', module: 'messaging' },
+  { to: '/templates', icon: FileText, label: 'Templates', module: 'messaging' },
+  { to: '/automation', icon: Bot, label: 'Automation', module: 'automation' },
   { to: '/settings', icon: Settings, label: 'Settings', module: 'settings' },
 ];
 
@@ -94,7 +80,7 @@ export function Sidebar() {
             {(!isCollapsed || isMobileOpen) && (
               <div>
                 <h1 className={`text-xl font-bold truncate max-w-42.5 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{churchName}</h1>
-                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>Management System</p>
+                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>SMS & Birthday Reminders</p>
               </div>
             )}
           </div>
@@ -126,7 +112,7 @@ export function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.exact}
+            end={item.to === '/'}
             onClick={closeMobileSidebar}
             className={({ isActive }) =>
               `flex items-center ${isCollapsed ? 'md:justify-center md:px-3 gap-3 px-4' : 'gap-3 px-4'} py-3 rounded-xl transition-all duration-200 group relative ${

@@ -1,6 +1,6 @@
 import API from "./axios";
 import { buildCacheKey, cacheGet } from "../utils/offline";
-import type { Attendance, ChurchProgram, Donation, Expenditure, Member, Pledge, SMSLog, SoulCenterVisitor, User } from "../types";
+import type { Attendance, Automation, ChurchProgram, Donation, Expenditure, Member, Pledge, SMSLog, SoulCenterVisitor, User } from "../types";
 import type { Notification } from "../types/notifications";
 
 type ApiEnvelope<T> = { success: boolean; data: T };
@@ -36,10 +36,10 @@ async function getCachedVisitor(visitorId: string): Promise<ApiSoulCenterVisitor
 }
 
 const roleModules: Record<User["role"], User["modules"]> = {
-  admin: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "finance", "soulcenter", "audit", "settings", "users"],
-  pastor: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter", "audit"],
-  finance: ["dashboard", "analytics", "finance", "audit", "members"],
-  staff: ["dashboard", "analytics", "members", "programs", "attendance", "messaging", "soulcenter"],
+  admin: ["members", "messaging", "automation", "settings"],
+  pastor: ["members", "messaging"],
+  finance: ["members", "messaging"],
+  staff: ["members", "messaging"],
 };
 
 // ---------- Members ----------
@@ -51,6 +51,7 @@ type ApiMember = {
   maritalStatus?: "single" | "married" | "widowed" | "divorced";
   membershipStatus?: "active" | "inactive";
   department?: string;
+  departments?: string[];
   phone?: string;
   email?: string;
   address?: string;
@@ -63,6 +64,9 @@ type ApiMember = {
 const mapMember = (m: ApiMember): Member => {
   const createdAt = m.createdAt ?? new Date().toISOString();
   const updatedAt = m.updatedAt ?? createdAt;
+  const departments = (m.departments || [m.department || "General"])
+    .map((dept) => String(dept || "").trim())
+    .filter(Boolean);
   return {
     id: m._id,
     fullName: `${m.firstName} ${m.lastName}`.trim(),
@@ -71,7 +75,8 @@ const mapMember = (m: ApiMember): Member => {
     dateOfBirth: m.dateOfBirth ? isoDate(m.dateOfBirth).slice(0, 10) : "",
     gender: m.gender ?? "male",
     maritalStatus: m.maritalStatus ?? "single",
-    department: m.department || "General",
+    department: departments[0] || "General",
+    departments,
     membershipStatus: m.membershipStatus ?? "active",
     joinDate: (m.joinDate ? isoDate(m.joinDate) : createdAt).slice(0, 10),
     address: m.address,
@@ -93,6 +98,13 @@ export async function fetchMember(memberId: string): Promise<Member> {
 export async function createMember(input: Partial<Member>): Promise<Member> {
   const [firstName, ...rest] = (input.fullName || "").trim().split(/\s+/);
   const lastName = rest.join(" ");
+  const departments = Array.from(
+    new Set(
+      (input.departments?.length ? input.departments : input.department ? [input.department] : [])
+        .map((dept) => String(dept || "").trim())
+        .filter(Boolean)
+    )
+  );
 
   const payload = {
     firstName: firstName || "Member",
@@ -102,7 +114,8 @@ export async function createMember(input: Partial<Member>): Promise<Member> {
     gender: input.gender || undefined,
     maritalStatus: input.maritalStatus || undefined,
     membershipStatus: input.membershipStatus || undefined,
-    department: input.department || undefined,
+    department: departments[0] || input.department || undefined,
+    departments,
     address: input.address || undefined,
     dateOfBirth: input.dateOfBirth || undefined,
     joinDate: input.joinDate || undefined,
@@ -116,6 +129,7 @@ export async function createMember(input: Partial<Member>): Promise<Member> {
     maritalStatus: payload.maritalStatus as ApiMember["maritalStatus"],
     membershipStatus: payload.membershipStatus as ApiMember["membershipStatus"],
     department: payload.department,
+    departments: payload.departments,
     phone: payload.phone,
     email: payload.email,
     address: payload.address,
@@ -132,6 +146,13 @@ export async function createMember(input: Partial<Member>): Promise<Member> {
 export async function updateMember(memberId: string, input: Partial<Member>): Promise<Member> {
   const [firstName, ...rest] = (input.fullName || "").trim().split(/\s+/);
   const lastName = rest.join(" ");
+  const departments = Array.from(
+    new Set(
+      (input.departments?.length ? input.departments : input.department ? [input.department] : [])
+        .map((dept) => String(dept || "").trim())
+        .filter(Boolean)
+    )
+  );
 
   const payload: Record<string, unknown> = {};
   if (input.fullName) {
@@ -143,7 +164,10 @@ export async function updateMember(memberId: string, input: Partial<Member>): Pr
   if (input.gender !== undefined) payload.gender = input.gender || undefined;
   if (input.maritalStatus !== undefined) payload.maritalStatus = input.maritalStatus || undefined;
   if (input.membershipStatus !== undefined) payload.membershipStatus = input.membershipStatus || undefined;
-  if (input.department !== undefined) payload.department = input.department || undefined;
+  if (input.department !== undefined || input.departments !== undefined) {
+    payload.departments = departments;
+    payload.department = departments[0] || input.department || undefined;
+  }
   if (input.address !== undefined) payload.address = input.address || undefined;
   if (input.dateOfBirth !== undefined) payload.dateOfBirth = input.dateOfBirth || undefined;
   if (input.joinDate !== undefined) payload.joinDate = input.joinDate || undefined;
@@ -156,7 +180,8 @@ export async function updateMember(memberId: string, input: Partial<Member>): Pr
     gender: (input.gender ?? cached?.gender) as ApiMember["gender"],
     maritalStatus: (input.maritalStatus ?? cached?.maritalStatus) as ApiMember["maritalStatus"],
     membershipStatus: (input.membershipStatus ?? cached?.membershipStatus) as ApiMember["membershipStatus"],
-    department: input.department ?? cached?.department,
+    department: departments[0] ?? input.department ?? cached?.department,
+    departments: departments.length > 0 ? departments : cached?.departments || (cached?.department ? [cached.department] : undefined),
     phone: input.phoneNumber ?? cached?.phone,
     email: input.email ?? cached?.email,
     address: input.address ?? cached?.address,
@@ -398,6 +423,143 @@ export async function updateProgram(programId: string, input: Partial<ChurchProg
 
 export async function deleteProgram(programId: string): Promise<void> {
   await API.delete(`/programs/${programId}`);
+}
+
+// ---------- Automations ----------
+const readLocalAutomations = (): Automation[] => {
+  try {
+    return JSON.parse(localStorage.getItem('cms_automations') || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const writeLocalAutomations = (items: Automation[]) => {
+  localStorage.setItem('cms_automations', JSON.stringify(items));
+};
+
+const mapAutomation = (automation: Automation): Automation => ({
+  ...automation,
+  dayOfWeek: Array.isArray(automation.dayOfWeek) ? automation.dayOfWeek : [],
+  lastRunAt: automation.lastRunAt ?? null,
+});
+
+const automationTimestamp = (automation: Automation): number =>
+  new Date(automation.updatedAt || automation.createdAt || 0).getTime();
+
+const mergeAutomations = (...sources: Automation[][]): Automation[] => {
+  const merged = new Map<string, Automation>();
+
+  for (const source of sources) {
+    for (const automation of source) {
+      if (!automation?.id) continue;
+      const normalized = mapAutomation(automation);
+      const existing = merged.get(normalized.id);
+      if (!existing || automationTimestamp(normalized) >= automationTimestamp(existing)) {
+        merged.set(normalized.id, normalized);
+      }
+    }
+  }
+
+  return Array.from(merged.values()).sort(
+    (a, b) =>
+      new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()
+  );
+};
+
+const getAutomationSettings = async (): Promise<SettingsPayload | null> => {
+  const settings = await fetchSettings();
+  if (!settings) return null;
+
+  const localAutomations = readLocalAutomations();
+  const mergedAutomations = mergeAutomations(localAutomations, settings.automations || []);
+  writeLocalAutomations(mergedAutomations);
+
+  return {
+    ...settings,
+    automations: mergedAutomations,
+  };
+};
+
+export async function fetchAutomations(): Promise<Automation[]> {
+  const settings = await getAutomationSettings();
+  const localAutomations = readLocalAutomations();
+  if (!settings) return localAutomations.map(mapAutomation);
+
+  const mergedAutomations = mergeAutomations(localAutomations, settings.automations || []);
+  const hasLocalOnlyAutomation = localAutomations.some(
+    (automation) => automation?.id && !(settings.automations || []).some((item) => item.id === automation.id)
+  );
+  const hasNewerLocalAutomation = localAutomations.some((automation) => {
+    if (!automation?.id) return false;
+    const matchingRemote = (settings.automations || []).find((item) => item.id === automation.id);
+    if (!matchingRemote) return false;
+    return automationTimestamp(automation) > automationTimestamp(matchingRemote as Automation);
+  });
+
+  if (hasLocalOnlyAutomation || hasNewerLocalAutomation) {
+    void upsertSettings({ ...settings, automations: mergedAutomations }).catch(() => undefined);
+  }
+  return mergedAutomations;
+}
+
+export async function createAutomation(input: Omit<Automation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Automation> {
+  const automation: Automation = mapAutomation({
+    ...input,
+    id: offlineId(),
+    dayOfWeek: input.dayOfWeek || [],
+    lastRunAt: input.lastRunAt ?? null,
+    createdAt: offlineNow(),
+    updatedAt: offlineNow(),
+  } as Automation);
+
+  const settings = await getAutomationSettings();
+  if (!settings) {
+    const updated = [automation, ...readLocalAutomations().filter((item) => item.id !== automation.id)];
+    writeLocalAutomations(updated);
+    return automation;
+  }
+
+  const finalList = mergeAutomations(settings.automations || [], [automation]);
+  await upsertSettings({ ...settings, automations: finalList });
+  writeLocalAutomations(finalList);
+  return automation;
+}
+
+export async function updateAutomation(id: string, input: Partial<Automation>): Promise<Automation> {
+  const settings = await getAutomationSettings();
+  const source = settings ? mergeAutomations(readLocalAutomations(), settings.automations || []) : readLocalAutomations();
+  const existing = source.find((item) => item.id === id);
+  if (!existing) {
+    throw new Error('Automation not found');
+  }
+
+  const updatedAutomation: Automation = mapAutomation({
+    ...existing,
+    ...input,
+    id,
+    dayOfWeek: input.dayOfWeek ?? existing.dayOfWeek ?? [],
+    lastRunAt: input.lastRunAt ?? existing.lastRunAt ?? null,
+    createdAt: existing.createdAt,
+    updatedAt: offlineNow(),
+  } as Automation);
+
+  const updatedList = mergeAutomations(source.filter((item) => item.id !== id), [updatedAutomation]);
+  if (settings) {
+    await upsertSettings({ ...settings, automations: updatedList });
+  }
+  writeLocalAutomations(updatedList);
+  return updatedAutomation;
+}
+
+export async function deleteAutomation(id: string): Promise<void> {
+  const settings = await getAutomationSettings();
+  const source = settings ? mergeAutomations(readLocalAutomations(), settings.automations || []) : readLocalAutomations();
+  const updated = source.filter((item) => item.id !== id);
+  if (settings) {
+    await upsertSettings({ ...settings, automations: updated });
+  }
+  writeLocalAutomations(updated);
 }
 
 // ---------- Attendance ----------
@@ -750,6 +912,11 @@ type ApiUserModules =
   | "users";
 type ApiUser = { _id: string; name: string; email: string; role: string; modules?: ApiUserModules[]; isActive?: boolean; createdAt?: string; updatedAt?: string };
 
+const toApiUserModules = (modules: User["modules"] | undefined): ApiUserModules[] => {
+  const allowed: ApiUserModules[] = ["members", "messaging", "settings"];
+  return (modules || []).filter((module): module is ApiUserModules => allowed.includes(module as ApiUserModules));
+};
+
 const mapUser = (u: ApiUser): User => {
   const createdAt = u.createdAt ?? new Date().toISOString();
   const updatedAt = u.updatedAt ?? createdAt;
@@ -809,7 +976,7 @@ export async function createUser(input: { name: string; email: string; password:
     name: res.data.data.name,
     email: res.data.data.email,
     role: res.data.data.role,
-    modules: input.modules,
+    modules: toApiUserModules(input.modules),
     isActive: input.isActive ?? true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -840,7 +1007,7 @@ export async function updateUser(userId: string, input: Partial<{ name: string; 
     name: input.name || "User",
     email: input.email || "",
     role: input.role ? (input.role === "admin" ? "Admin" : input.role === "finance" ? "Finance" : input.role === "staff" ? "Staff" : "Pastor") : "Staff",
-    modules: input.modules as ApiUserModules[] | undefined,
+    modules: toApiUserModules(input.modules),
     isActive: input.isActive ?? true,
     createdAt: offlineNow(),
     updatedAt: offlineNow(),
@@ -877,6 +1044,7 @@ type ApiSettings = {
   memberAddedNotificationTemplate?: string;
   donationNotificationTemplate?: string;
   userAddedNotificationTemplate?: string;
+  automations?: Automation[];
   createdAt?: string;
   updatedAt?: string;
 };
@@ -904,6 +1072,7 @@ export type SettingsPayload = {
   memberAddedNotificationTemplate?: string;
   donationNotificationTemplate?: string;
   userAddedNotificationTemplate?: string;
+  automations?: Automation[];
 };
 
 export async function fetchSettings(): Promise<SettingsPayload | null> {
@@ -934,6 +1103,7 @@ export async function fetchSettings(): Promise<SettingsPayload | null> {
     memberAddedNotificationTemplate: settings.memberAddedNotificationTemplate,
     donationNotificationTemplate: settings.donationNotificationTemplate,
     userAddedNotificationTemplate: settings.userAddedNotificationTemplate,
+    automations: settings.automations || [],
   };
 }
 
@@ -960,6 +1130,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     memberAddedNotificationTemplate: payload.memberAddedNotificationTemplate,
     donationNotificationTemplate: payload.donationNotificationTemplate,
     userAddedNotificationTemplate: payload.userAddedNotificationTemplate,
+    automations: payload.automations,
   };
 
   if (payload.id) {
@@ -986,6 +1157,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       memberAddedNotificationTemplate: payload.memberAddedNotificationTemplate,
       donationNotificationTemplate: payload.donationNotificationTemplate,
       userAddedNotificationTemplate: payload.userAddedNotificationTemplate,
+      automations: payload.automations,
       createdAt: offlineNow(),
       updatedAt: offlineNow(),
     };
@@ -1013,6 +1185,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       memberAddedNotificationTemplate: res.data.data.memberAddedNotificationTemplate,
       donationNotificationTemplate: res.data.data.donationNotificationTemplate,
       userAddedNotificationTemplate: res.data.data.userAddedNotificationTemplate,
+      automations: res.data.data.automations || [],
     };
   }
 
@@ -1039,6 +1212,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     memberAddedNotificationTemplate: payload.memberAddedNotificationTemplate,
     donationNotificationTemplate: payload.donationNotificationTemplate,
     userAddedNotificationTemplate: payload.userAddedNotificationTemplate,
+    automations: payload.automations,
     createdAt: offlineNow(),
     updatedAt: offlineNow(),
   };
@@ -1066,6 +1240,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     memberAddedNotificationTemplate: res.data.data.memberAddedNotificationTemplate,
     donationNotificationTemplate: res.data.data.donationNotificationTemplate,
     userAddedNotificationTemplate: res.data.data.userAddedNotificationTemplate,
+    automations: res.data.data.automations || [],
   };
 }
 
@@ -1107,10 +1282,20 @@ type ApiSmsLog = {
   createdAt: string;
 };
 
+type ApiSmsBalance = {
+  smsBalance: number | string | null;
+  mainBalance: number | string | null;
+  raw?: unknown;
+  endpoint?: string;
+  apiKeySource?: "configured" | "fallback";
+  apiKeyPreview?: string;
+};
+
 export async function sendSmsBroadcast(payload: {
   message: string;
   recipients: SendSmsRecipient[];
   sender?: string;
+  type?: "manual" | "automation";
 }) {
   const res = await API.post<ApiEnvelope<ApiSmsSendResponse>>("/sms/send", payload);
   return res.data.data;
@@ -1132,6 +1317,11 @@ export async function fetchSmsLogs(): Promise<SMSLog[]> {
     createdBy: log.createdBy,
     createdAt: log.createdAt,
   }));
+}
+
+export async function fetchSmsBalance(): Promise<ApiSmsBalance> {
+  const res = await API.get<ApiEnvelope<ApiSmsBalance>>("/sms/balance");
+  return res.data.data;
 }
 
 // ---------- In-app Notifications ----------
@@ -1183,5 +1373,3 @@ export async function chatWithAssistant(payload: {
   const res = await API.post<ApiEnvelope<{ reply: string; allowedModules: string[] }>>("/ai/chat", payload);
   return res.data.data;
 }
-
-// ---------- Knowledge Base ----------

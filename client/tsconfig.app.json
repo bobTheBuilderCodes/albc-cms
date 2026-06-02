@@ -24,5 +24,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "src/pages/Login.tsx"]
+  "files": [
+    "./src/main.tsx",
+    "./src/App.tsx",
+    "./src/routes.tsx",
+    "./src/types/axios.d.ts",
+    "./src/types/pwa.d.ts",
+    "./src/types/service-worker.d.ts"
+  ]
 }

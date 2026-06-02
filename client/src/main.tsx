@@ -7,10 +7,21 @@ import "./index.css";
 createRoot(document.getElementById("root")!).render(<App />);
 
 if ("serviceWorker" in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
+        registration.update().catch(() => undefined);
+
         if (registration.waiting) {
           emitToast("update", "Update available. Refresh to get the latest version.");
           window.dispatchEvent(new CustomEvent("pwa-update-available"));

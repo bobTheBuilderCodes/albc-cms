@@ -7,7 +7,7 @@ import InAppNotification, {
 } from "../modules/notifications/in-app-notification.model";
 import { Program } from "../modules/programs/programs.model";
 import { buildBrandedEmail, emailService } from "./email.service";
-import { sendArkeselSMS } from "./arkesel.service";
+import { resolveArkeselApiKey, sendArkeselSMS } from "./arkesel.service";
 import { env } from "../config/env";
 import { createSmsLog } from "./sms-log.service";
 
@@ -200,10 +200,14 @@ export const notificationService = {
     );
 
     const smsPhone = normalizePhoneForArkesel(String(member.phone || ""));
-    if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsApiKey && config.smsSenderId && smsPhone) {
+    if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && smsPhone) {
       try {
+        const resolvedKey = await resolveArkeselApiKey({
+          configuredApiKey: config.smsApiKey,
+          fallbackApiKey: env.ARKESEL_API_KEY,
+        });
         await sendArkeselSMS({
-          apiKey: config.smsApiKey,
+          apiKey: resolvedKey.apiKey,
           sender: config.smsSenderId,
           message,
           recipients: [smsPhone],

@@ -118,10 +118,15 @@ class EmailService {
       // Optional runtime dependency: app keeps running even if nodemailer is unavailable.
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const nodemailer = require("nodemailer");
+      const shouldUseSecure = env.SMTP_SECURE || env.SMTP_PORT === 465;
       this.transporter = nodemailer.createTransport({
         host: env.SMTP_HOST,
         port: env.SMTP_PORT,
-        secure: env.SMTP_SECURE,
+        secure: shouldUseSecure,
+        requireTLS: !shouldUseSecure,
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 15_000,
         auth: {
           user: smtpUser,
           pass: sanitizedPassword,
@@ -130,15 +135,7 @@ class EmailService {
       this.senderEmail = sender;
       this.available = true;
       this.disabledReason = "";
-      this.transporter
-        .verify()
-        .then(() => {
-          console.log(`Email service ready via ${env.SMTP_HOST}:${env.SMTP_PORT} as ${smtpUser}`);
-        })
-        .catch((error: unknown) => {
-          this.disabledReason = error instanceof Error ? error.message : "SMTP verification failed.";
-          console.error("Email service warning: SMTP verification failed.", error);
-        });
+      console.log(`Email service configured via ${env.SMTP_HOST}:${env.SMTP_PORT} as ${smtpUser}`);
     } catch (error) {
       this.disabledReason = "nodemailer is unavailable.";
       console.warn("Email service disabled: nodemailer is unavailable.", error);

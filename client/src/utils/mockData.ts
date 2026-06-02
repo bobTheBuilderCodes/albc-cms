@@ -15,6 +15,7 @@ function generateMockMembers(count: number): Member[] {
     const year = 1950 + Math.floor(Math.random() * 55);
     const month = Math.floor(Math.random() * 12) + 1;
     const day = Math.floor(Math.random() * 28) + 1;
+    const department = departments[Math.floor(Math.random() * departments.length)];
     
     members.push({
       id: `member-${i + 1}`,
@@ -24,7 +25,8 @@ function generateMockMembers(count: number): Member[] {
       dateOfBirth: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
       gender,
       maritalStatus: ['single', 'married', 'widowed', 'divorced'][Math.floor(Math.random() * 4)] as any,
-      department: departments[Math.floor(Math.random() * departments.length)],
+      department,
+      departments: [department],
       membershipStatus: Math.random() > 0.15 ? 'active' : 'inactive',
       joinDate: `${2015 + Math.floor(Math.random() * 10)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
       address: `${Math.floor(Math.random() * 500)} Church Street, Accra`,

@@ -20,6 +20,21 @@ const ensureEnum = <T extends readonly string[]>(
   return value as T[number];
 };
 
+const normalizeDepartments = (value: unknown, fallbackDepartment?: string): string[] => {
+  const raw = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const normalized = Array.from(
+    new Set(
+      raw
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (normalized.length > 0) return normalized;
+  if (fallbackDepartment && String(fallbackDepartment).trim()) return [String(fallbackDepartment).trim()];
+  return [];
+};
+
 export const createMember = asyncHandler(async (req: Request, res: Response) => {
   const member = await Member.create({
     firstName: ensureString(req.body.firstName, "firstName"),
@@ -33,7 +48,8 @@ export const createMember = asyncHandler(async (req: Request, res: Response) => 
     membershipStatus: isDefined(req.body.membershipStatus)
       ? ensureEnum(req.body.membershipStatus, membershipStatuses, "membershipStatus")
       : undefined,
-    department: req.body.department,
+    department: isDefined(req.body.department) ? ensureString(req.body.department, "department") : undefined,
+    departments: normalizeDepartments(req.body.departments, req.body.department),
     phone: req.body.phone,
     email: req.body.email,
     address: req.body.address,
@@ -84,7 +100,10 @@ export const updateMember = asyncHandler(async (req: Request, res: Response) => 
       "membershipStatus"
     );
   }
-  if (isDefined(req.body.department)) updates.department = req.body.department;
+  if (isDefined(req.body.department)) updates.department = ensureString(req.body.department, "department");
+  if (isDefined(req.body.departments)) {
+    updates.departments = normalizeDepartments(req.body.departments, req.body.department);
+  }
   if (isDefined(req.body.phone)) updates.phone = req.body.phone;
   if (isDefined(req.body.email)) updates.email = req.body.email;
   if (isDefined(req.body.address)) updates.address = req.body.address;
