@@ -1277,8 +1277,8 @@ type ApiSmsLog = {
   recipientName: string;
   recipientPhone: string;
   message: string;
-  type: "program_reminder" | "birthday" | "manual" | "announcement";
-  status: "sent" | "failed" | "pending";
+  type: "program_reminder" | "birthday" | "manual" | "announcement" | "automation";
+  status: "sent" | "failed" | "pending" | "skipped";
   sentAt?: string;
   failureReason?: string;
   programId?: string;

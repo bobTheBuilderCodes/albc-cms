@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import type { Member, SMSLog } from '../types';
+import type { SMSLog } from '../types';
 import { Pagination } from '../components/Pagination';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { fetchMembers, fetchSettings, fetchSmsLogs } from '../api/backend';
+import { fetchSmsLogs } from '../api/backend';
 import { AlertTriangle, Clock, CheckCircle2, MessageSquare, Search, XCircle } from 'lucide-react';
 
 export function SmsLogs() {
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'sent' | 'failed' | 'pending'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'sent' | 'failed' | 'pending' | 'skipped'>('all');
   const [filterDate, setFilterDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
@@ -23,9 +23,6 @@ export function SmsLogs() {
   }, []);
 
   const loadData = async () => {
-    const [memberData, settings] = await Promise.all([fetchMembers(), fetchSettings()]);
-    checkAndSendBirthdayMessages(memberData, settings || undefined);
-
     const backendLogs = await fetchSmsLogs();
     const localLogs: SMSLog[] = JSON.parse(localStorage.getItem('cms_sms_logs') || '[]');
     const mergedLogs = [...backendLogs];
@@ -36,66 +33,6 @@ export function SmsLogs() {
     setSmsLogs(mergedLogs);
   };
 
-  const checkAndSendBirthdayMessages = (
-    membersData: Member[],
-    settings?: {
-      churchName?: string;
-      enableBirthdayNotifications?: boolean;
-      birthdayMessageTemplate?: string;
-      birthdaySendDaysBefore?: number;
-      birthdaySendTime?: string;
-    }
-  ) => {
-    if (settings?.enableBirthdayNotifications === false) return;
-
-    const today = new Date();
-    const [hours = '08', minutes = '00'] = String(settings?.birthdaySendTime || '08:00').split(':');
-    const sendHour = Number(hours);
-    const sendMinute = Number(minutes);
-    if (today.getHours() < sendHour || (today.getHours() === sendHour && today.getMinutes() < sendMinute)) return;
-
-    const daysBefore = Math.max(0, Number(settings?.birthdaySendDaysBefore || 0));
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + daysBefore);
-    const targetMonthDay = `${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-    const churchName = settings?.churchName || 'Grace Church';
-    const template =
-      settings?.birthdayMessageTemplate ||
-      "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}";
-
-    const birthdayMembers = membersData.filter((m: Member) => {
-      const dob = new Date(m.dateOfBirth);
-      const memberBirthday = `${String(dob.getMonth() + 1).padStart(2, '0')}-${String(dob.getDate()).padStart(2, '0')}`;
-      return memberBirthday === targetMonthDay;
-    });
-
-    if (birthdayMembers.length > 0) {
-      const existingLogs = JSON.parse(localStorage.getItem('cms_sms_logs') || '[]');
-      const dateKey = today.toISOString().slice(0, 10);
-      const newLogs: SMSLog[] = birthdayMembers.map((m: Member) => ({
-        id: `sms-birthday-${dateKey}-${m.id}`,
-        recipientId: m.id,
-        recipientName: m.fullName,
-        recipientPhone: m.phoneNumber,
-        message: template.replaceAll('{{name}}', m.fullName).replaceAll('{{church_name}}', churchName),
-        type: 'birthday',
-        status: Math.random() > 0.1 ? 'sent' : 'failed',
-        sentAt: new Date().toISOString(),
-        failureReason: Math.random() > 0.1 ? undefined : 'Network error',
-        createdBy: 'System (Auto)',
-        createdAt: new Date().toISOString(),
-      }));
-
-      const existingKeys = new Set(existingLogs.map((log: SMSLog) => `${log.type}-${log.recipientId}-${new Date(log.createdAt).toISOString().slice(0, 10)}`));
-      const dedupedNewLogs = newLogs.filter((log) => !existingKeys.has(`${log.type}-${log.recipientId}-${dateKey}`));
-      if (dedupedNewLogs.length === 0) return;
-
-      const updated = [...existingLogs, ...dedupedNewLogs];
-      localStorage.setItem('cms_sms_logs', JSON.stringify(updated));
-      setSmsLogs(updated);
-    }
-  };
-
   const filteredLogs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return smsLogs.filter((log) => {
@@ -103,7 +40,8 @@ export function SmsLogs() {
       if (q && !searchable.includes(q)) return false;
       if (filterStatus !== 'all' && log.status !== filterStatus) return false;
       if (filterDate) {
-        const sentDate = log.sentAt ? new Date(log.sentAt).toISOString().slice(0, 10) : '';
+        const timestamp = log.sentAt || log.createdAt;
+        const sentDate = timestamp ? new Date(timestamp).toISOString().slice(0, 10) : '';
         if (sentDate !== filterDate) return false;
       }
       return true;
@@ -123,6 +61,36 @@ export function SmsLogs() {
   const inputClass = theme === 'dark'
     ? 'w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500'
     : 'w-full rounded-lg border border-neutral-300 bg-white px-4 py-2.5 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  const statusMeta = (status: SMSLog['status']) => {
+    switch (status) {
+      case 'sent':
+        return {
+          wrapper: 'bg-success-50 text-success-700',
+          icon: <CheckCircle2 className="w-3 h-3" />,
+          label: 'Sent',
+        };
+      case 'pending':
+        return {
+          wrapper: 'bg-warning-50 text-warning-700',
+          icon: <Clock className="w-3 h-3" />,
+          label: 'Pending',
+        };
+      case 'skipped':
+        return {
+          wrapper: 'bg-amber-50 text-amber-700',
+          icon: <AlertTriangle className="w-3 h-3" />,
+          label: 'Skipped',
+        };
+      case 'failed':
+      default:
+        return {
+          wrapper: 'bg-danger-50 text-danger-700',
+          icon: <XCircle className="w-3 h-3" />,
+          label: 'Failed',
+        };
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -162,13 +130,14 @@ export function SmsLogs() {
 
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'sent' | 'failed' | 'pending')}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'sent' | 'failed' | 'pending' | 'skipped')}
               className={inputClass}
             >
               <option value="all">All Status</option>
               <option value="sent">Sent</option>
               <option value="failed">Failed</option>
               <option value="pending">Pending</option>
+              <option value="skipped">Skipped</option>
             </select>
 
             <input
@@ -202,20 +171,16 @@ export function SmsLogs() {
                 <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>{log.message}</p>
 
                 <div className="mt-3 space-y-1">
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${
-                    log.status === 'sent'
-                      ? 'bg-success-50 text-success-700'
-                      : log.status === 'pending'
-                      ? 'bg-warning-50 text-warning-700'
-                      : 'bg-danger-50 text-danger-700'
-                  }`}>
-                    {log.status === 'sent' && <CheckCircle2 className="w-3 h-3" />}
-                    {log.status === 'pending' && <Clock className="w-3 h-3" />}
-                    {log.status === 'failed' && <XCircle className="w-3 h-3" />}
-                    {log.status}
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${statusMeta(log.status).wrapper}`}>
+                    {statusMeta(log.status).icon}
+                    {statusMeta(log.status).label}
                   </span>
-                  {log.status === 'failed' && log.failureReason && (
-                    <div className="flex items-start gap-1 text-xs text-danger-600">
+                  {log.failureReason && log.status !== 'sent' && (
+                    <div
+                      className={`flex items-start gap-1 text-xs ${
+                        log.status === 'skipped' ? 'text-amber-700' : 'text-danger-600'
+                      }`}
+                    >
                       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                       <span className="break-words">{log.failureReason}</span>
                     </div>
@@ -223,7 +188,7 @@ export function SmsLogs() {
                 </div>
 
                 <p className={`mt-3 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}`}>
-                  {log.sentAt ? new Date(log.sentAt).toLocaleString() : '-'}
+                  {new Date(log.sentAt || log.createdAt).toLocaleString()}
                 </p>
               </div>
             ))}
@@ -261,20 +226,16 @@ export function SmsLogs() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${
-                          log.status === 'sent'
-                            ? 'bg-success-50 text-success-700'
-                            : log.status === 'pending'
-                            ? 'bg-warning-50 text-warning-700'
-                            : 'bg-danger-50 text-danger-700'
-                        }`}>
-                          {log.status === 'sent' && <CheckCircle2 className="w-3 h-3" />}
-                          {log.status === 'pending' && <Clock className="w-3 h-3" />}
-                          {log.status === 'failed' && <XCircle className="w-3 h-3" />}
-                          {log.status}
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${statusMeta(log.status).wrapper}`}>
+                          {statusMeta(log.status).icon}
+                          {statusMeta(log.status).label}
                         </span>
-                        {log.status === 'failed' && log.failureReason && (
-                          <div className="flex items-start gap-1 text-xs text-danger-600">
+                        {log.failureReason && log.status !== 'sent' && (
+                          <div
+                            className={`flex items-start gap-1 text-xs ${
+                              log.status === 'skipped' ? 'text-amber-700' : 'text-danger-600'
+                            }`}
+                          >
                             <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                             <span className="break-words">{log.failureReason}</span>
                           </div>
@@ -282,7 +243,7 @@ export function SmsLogs() {
                       </div>
                     </td>
                     <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>
-                      {log.sentAt ? new Date(log.sentAt).toLocaleString() : '-'}
+                      {new Date(log.sentAt || log.createdAt).toLocaleString()}
                     </td>
                   </tr>
                 ))}

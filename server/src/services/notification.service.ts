@@ -11,6 +11,8 @@ import { resolveArkeselApiKey, sendArkeselSMS } from "./arkesel.service";
 import { env } from "../config/env";
 import { createSmsLog } from "./sms-log.service";
 
+const TIME_ZONE = "Africa/Accra";
+
 type FinanceNotificationInput = {
   type: string;
   amount: number;
@@ -39,11 +41,79 @@ const formatDate = (date: Date): string => {
 };
 
 const todayDateKey = (): string => {
-  return new Date().toISOString().slice(0, 10);
+  return formatDateKeyInTimeZone(new Date());
+};
+
+const formatDateKeyInTimeZone = (date: Date): string => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== "literal") acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  return `${parts.year || "0000"}-${parts.month || "00"}-${parts.day || "00"}`;
+};
+
+const getMonthDayInTimeZone = (date: Date): { month: number; day: number } => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== "literal") acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  return {
+    month: Number(parts.month || -1),
+    day: Number(parts.day || -1),
+  };
 };
 
 const isSameMonthDay = (date: Date, target: Date): boolean => {
-  return date.getUTCMonth() === target.getUTCMonth() && date.getUTCDate() === target.getUTCDate();
+  const dateParts = getMonthDayInTimeZone(date);
+  const targetParts = getMonthDayInTimeZone(target);
+  return dateParts.month === targetParts.month && dateParts.day === targetParts.day;
+};
+
+const getLocalHourMinute = (date: Date): { hour: number; minute: number } => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== "literal") acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  return {
+    hour: Number(parts.hour || -1),
+    minute: Number(parts.minute || -1),
+  };
+};
+
+const isWithinRunWindow = (
+  currentHour: number,
+  currentMinute: number,
+  targetHour: number,
+  targetMinute: number,
+  graceMinutes = 10
+): boolean => {
+  const currentTotal = currentHour * 60 + currentMinute;
+  const targetTotal = targetHour * 60 + targetMinute;
+
+  return currentTotal >= targetTotal && currentTotal <= targetTotal + graceMinutes;
 };
 
 const parseTime = (value?: string): { hour: number; minute: number } => {
@@ -369,35 +439,58 @@ export const notificationService = {
 
     const now = new Date();
     const { hour, minute } = parseTime(config.birthdaySendTime);
-    if (now.getUTCHours() !== hour || now.getUTCMinutes() !== minute) return;
+    const localTime = getLocalHourMinute(now);
+    console.log("[Birthday] job tick", {
+      now: now.toISOString(),
+      localTime: `${String(localTime.hour).padStart(2, "0")}:${String(localTime.minute).padStart(2, "0")}`,
+      configuredTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+      daysBefore: config.birthdaySendDaysBefore,
+      enabled: config.birthday,
+    });
+
+    if (!isWithinRunWindow(localTime.hour, localTime.minute, hour, minute, 10)) {
+      console.log("[Birthday] skipped: outside send window", {
+        localTime,
+        targetTime: { hour, minute },
+      });
+      return;
+    }
 
     const targetDate = new Date(now);
     const daysBefore = Number.isFinite(config.birthdaySendDaysBefore)
       ? Math.max(0, Math.trunc(config.birthdaySendDaysBefore))
       : 0;
     targetDate.setUTCDate(targetDate.getUTCDate() + daysBefore);
-    const dateKey = todayDateKey();
+    const birthdayDateKey = formatDateKeyInTimeZone(targetDate);
     const membersWithBirthdays = await Member.find({
-      dateOfBirth: { $exists: true, $ne: null },
-      email: { $exists: true, $ne: "" },
-    }).select("firstName lastName email dateOfBirth");
+      dateOfBirth: { $type: "date" },
+    }).select("firstName lastName email phone dateOfBirth");
 
     const birthdayMembers = membersWithBirthdays.filter((member) => {
       if (!member.dateOfBirth) return false;
       return isSameMonthDay(new Date(member.dateOfBirth), targetDate);
     });
 
-    if (birthdayMembers.length === 0) return;
+    if (birthdayMembers.length === 0) {
+      console.log("[Birthday] no members due today", { birthdayDateKey });
+      return;
+    }
 
     const allMemberEmails = await getMemberEmails();
 
     for (const member of birthdayMembers) {
       const existingLog = await BirthdayEmailLog.findOne({
         memberId: member._id,
-        dateKey,
+        dateKey: birthdayDateKey,
       });
 
-      if (existingLog) continue;
+      if (existingLog) {
+        console.log("[Birthday] skipped: already processed", {
+          memberId: String(member._id),
+          birthdayDateKey,
+        });
+        continue;
+      }
 
       const fullName = memberDisplayName(member);
       await safeSend(
@@ -407,7 +500,7 @@ export const notificationService = {
             title: "Birthday Notification",
             message: `Today is ${fullName}'s birthday.`,
             actionUrl: `/members/${String(member._id)}`,
-            dedupeKey: `birthday:${String(member._id)}:${dateKey}`,
+            dedupeKey: `birthday:${String(member._id)}:${birthdayDateKey}`,
           }),
         "birthday in-app"
       );
@@ -417,9 +510,10 @@ export const notificationService = {
         fullName,
         config.churchName
       );
-      const others = allMemberEmails.filter(
-        (email) => email.toLowerCase() !== String(member.email).toLowerCase()
-      );
+      const celebrantEmail = String(member.email || "").trim();
+      const others = celebrantEmail
+        ? allMemberEmails.filter((email) => email.toLowerCase() !== celebrantEmail.toLowerCase())
+        : allMemberEmails;
 
       if (others.length > 0) {
         await safeSend(
@@ -439,21 +533,25 @@ export const notificationService = {
         );
       }
 
-      await safeSend(
-        () =>
-          emailService.send({
-            to: String(member.email),
-            subject: `Happy Birthday, ${fullName}!`,
-            text: celebrantMessage,
-            html: buildBrandedEmail({
-              churchName: config.churchName,
-              title: `Happy Birthday, ${fullName}!`,
-              message: celebrantMessage,
-              previewText: `Birthday wishes from ${config.churchName}`,
+      if (celebrantEmail) {
+        await safeSend(
+          () =>
+            emailService.send({
+              to: celebrantEmail,
+              subject: `Happy Birthday, ${fullName}!`,
+              text: celebrantMessage,
+              html: buildBrandedEmail({
+                churchName: config.churchName,
+                title: `Happy Birthday, ${fullName}!`,
+                message: celebrantMessage,
+                previewText: `Birthday wishes from ${config.churchName}`,
+              }),
             }),
-          }),
-        "birthday celebrant"
-      );
+          "birthday celebrant"
+        );
+      } else {
+        console.warn(`Birthday email skipped for "${fullName}": no email on member record`);
+      }
 
       const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
       if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && celebrantPhone) {
@@ -494,11 +592,36 @@ export const notificationService = {
           });
           console.error("Notification send failed: birthday celebrant sms", error);
         }
+      } else {
+        const reason = !celebrantPhone
+          ? "Skipped: no phone number on member record"
+          : !config.smsEnabled
+          ? "Skipped: SMS is disabled in settings"
+          : config.smsProvider !== "arkesel"
+          ? "Skipped: SMS provider is not Arkesel"
+          : "Skipped: SMS sender ID is not configured";
+        console.warn(`Birthday SMS skipped for "${fullName}": ${reason}`);
+        await createSmsLog({
+          recipientId: String(member._id || celebrantPhone || fullName),
+          recipientName: fullName || celebrantPhone || "Birthday celebrant",
+          recipientPhone: celebrantPhone || "N/A",
+          message: celebrantMessage,
+          type: "birthday",
+          status: "skipped",
+          failureReason: reason,
+          createdBy: "system",
+        });
       }
 
       await BirthdayEmailLog.create({
         memberId: member._id,
-        dateKey,
+        dateKey: birthdayDateKey,
+      });
+
+      console.log("[Birthday] processed", {
+        memberId: String(member._id),
+        member: fullName,
+        birthdayDateKey,
       });
     }
   },
