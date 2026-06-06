@@ -7,6 +7,8 @@ import { createSmsLog } from "./sms-log.service";
 
 const WEEK_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 const TIME_ZONE = "Africa/Accra";
+const RUN_GRACE_MINUTES = 10;
+let automationSchedulerRunning = false;
 
 type AutomationRule = {
   id: string;
@@ -27,6 +29,8 @@ type AutomationRule = {
   lastRunAt?: Date;
   lastRunKey?: string;
   createdBy?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 const normalizePhone = (phone: string): string => {
@@ -68,22 +72,6 @@ const getZonedDateKey = (date: Date): string => {
   return `${parts.year || "0000"}-${parts.month || "00"}-${parts.day || "00"}`;
 };
 
-const formatScheduledDate = (date: Date): string => {
-  const parts = getZonedParts(date);
-  const year = Number(parts.year || date.getUTCFullYear());
-  const month = Number(parts.month || date.getUTCMonth() + 1);
-  const day = Number(parts.day || date.getUTCDate());
-  const hour24 = Number(parts.hour || date.getUTCHours());
-  const minute24 = Number(parts.minute || date.getUTCMinutes());
-  const displayHour = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  const amPm = hour24 >= 12 ? "PM" : "AM";
-  const paddedMonth = String(month).padStart(2, "0");
-  const paddedDay = String(day).padStart(2, "0");
-  const paddedHour = String(displayHour).padStart(2, "0");
-  const paddedMinute = String(minute24).padStart(2, "0");
-  return `${year}-${paddedMonth}-${paddedDay} ${paddedHour}:${paddedMinute} ${amPm}`;
-};
-
 const mapAutomationRule = (automation: any): AutomationRule | null => {
   if (!automation) return null;
   const id = String(automation.id || automation._id || "").trim();
@@ -110,7 +98,16 @@ const mapAutomationRule = (automation: any): AutomationRule | null => {
     lastRunAt: automation.lastRunAt ? new Date(automation.lastRunAt) : undefined,
     lastRunKey: String(automation.lastRunKey || "").trim() || undefined,
     createdBy: String(automation.createdBy || "").trim() || undefined,
+    createdAt: automation.createdAt ? new Date(automation.createdAt) : undefined,
+    updatedAt: automation.updatedAt ? new Date(automation.updatedAt) : undefined,
   };
+};
+
+const automationPriority = (automation: AutomationRule): number => {
+  const baseTime = new Date(automation.lastRunAt || automation.updatedAt || automation.createdAt || 0).getTime();
+  const runBonus = automation.lastRunAt ? 1_000_000_000_000_000 : 0;
+  const keyBonus = automation.lastRunKey ? 1_000_000_000_000 : 0;
+  return runBonus + keyBonus + baseTime;
 };
 
 const buildDateAtTime = (baseDate: Date, hour: number, minute: number): Date => {
@@ -132,7 +129,8 @@ const getNextWeeklyRunAt = (automation: AutomationRule, now: Date): Date | null 
     if (!days.includes(weekday)) continue;
 
     const scheduled = buildDateAtTime(candidate, hour, minute);
-    if (scheduled.getTime() <= now.getTime()) continue;
+    const ageMinutes = (now.getTime() - scheduled.getTime()) / 60000;
+    if (scheduled.getTime() <= now.getTime() && ageMinutes > RUN_GRACE_MINUTES) continue;
     return scheduled;
   }
 
@@ -147,7 +145,8 @@ const getNextMonthlyRunAt = (automation: AutomationRule, now: Date): Date | null
     const candidate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1, hour, minute, 0, 0));
     const target = new Date(Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth(), dayOfMonth, hour, minute, 0, 0));
     if (target.getUTCMonth() !== candidate.getUTCMonth()) continue;
-    if (target.getTime() <= now.getTime()) continue;
+    const ageMinutes = (now.getTime() - target.getTime()) / 60000;
+    if (target.getTime() <= now.getTime() && ageMinutes > RUN_GRACE_MINUTES) continue;
     return target;
   }
 
@@ -161,10 +160,28 @@ const getNextCustomRunAt = (automation: AutomationRule, now: Date): Date | null 
   if (rule.includes("daily") || rule.includes("every day")) {
     const { hour, minute } = parseTime(automation.sendTime || "08:00");
     const today = buildDateAtTime(now, hour, minute);
-    if (today.getTime() > now.getTime()) return today;
+    const ageMinutes = (now.getTime() - today.getTime()) / 60000;
+    if (today.getTime() > now.getTime() || ageMinutes <= RUN_GRACE_MINUTES) return today;
     const tomorrow = new Date(today);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
     return tomorrow;
+  }
+
+  const minuteInterval = rule.match(/every\s+(\d+)\s+minutes?/i);
+  if (minuteInterval) {
+    const interval = Math.max(1, Number(minuteInterval[1]));
+    const next = new Date(now);
+    next.setUTCSeconds(0, 0);
+    const remainder = next.getUTCMinutes() % interval;
+    const currentSlot = new Date(next);
+    currentSlot.setUTCMinutes(next.getUTCMinutes() - remainder);
+    const ageMinutes = (now.getTime() - currentSlot.getTime()) / 60000;
+    if (currentSlot.getTime() <= now.getTime() && ageMinutes <= RUN_GRACE_MINUTES) {
+      return currentSlot;
+    }
+    const future = new Date(currentSlot);
+    future.setUTCMinutes(currentSlot.getUTCMinutes() + interval);
+    return future;
   }
 
   const weekly = rule.match(/every\s+(\d+)\s+weeks?\s+on\s+(.+)/i);
@@ -189,29 +206,6 @@ const getNextRunAt = (automation: AutomationRule, now: Date): Date | null => {
   if (automation.conditionType === "monthly") return getNextMonthlyRunAt(automation, now);
   if (automation.conditionType === "custom") return getNextCustomRunAt(automation, now);
   return null;
-};
-
-const mergeAutomationRules = (...sources: AutomationRule[][]): AutomationRule[] => {
-  const merged = new Map<string, AutomationRule>();
-
-  for (const source of sources) {
-    for (const automation of source) {
-      if (!automation?.id) continue;
-      const existing = merged.get(automation.id);
-      if (!existing) {
-        merged.set(automation.id, automation);
-        continue;
-      }
-
-      const existingUpdatedAt = existing.lastRunAt ? existing.lastRunAt.getTime() : 0;
-      const incomingUpdatedAt = automation.lastRunAt ? automation.lastRunAt.getTime() : 0;
-      if (incomingUpdatedAt >= existingUpdatedAt) {
-        merged.set(automation.id, automation);
-      }
-    }
-  }
-
-  return Array.from(merged.values());
 };
 
 const buildRecipients = async (automation: AutomationRule): Promise<Array<{ memberId?: string; name: string; phone: string }>> => {
@@ -249,12 +243,30 @@ const runDueAutomation = async (automation: AutomationRule, churchName: string, 
   const now = new Date();
   const nextRunAt = getNextRunAt(automation, now);
   if (!nextRunAt) return;
+  if (nextRunAt.getTime() > now.getTime()) return;
 
   const scheduleKey = `${automation.id}|${nextRunAt.toISOString()}`;
-  if (automation.lastRunKey === scheduleKey) return;
+  const lastRunAtTime = automation.lastRunAt ? new Date(automation.lastRunAt).getTime() : null;
+  const isStaleRunMarker =
+    automation.lastRunKey === scheduleKey &&
+    lastRunAtTime !== null &&
+    lastRunAtTime + 60_000 < nextRunAt.getTime();
+  if (automation.lastRunKey === scheduleKey && !isStaleRunMarker) return;
+  if (isStaleRunMarker) {
+    console.warn(
+      `[Automation] "${automation.name}" has a stale run marker; allowing the current due occurrence to run`
+    );
+  }
 
   const recipients = await buildRecipients(automation);
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) {
+    console.warn(`[Automation] "${automation.name}" skipped: no recipients matched the configured audience`);
+    return;
+  }
+  console.log(
+    `[Automation] evaluating "${automation.name}" occurrence=${nextRunAt.toISOString()} recipients=${recipients.length}`
+  );
+  let acceptedCount = 0;
 
   for (const recipient of recipients) {
     const message = String(automation.templateContent || "")
@@ -268,16 +280,16 @@ const runDueAutomation = async (automation: AutomationRule, churchName: string, 
         sender: senderId,
         message,
         recipients: [recipient.phone],
-        scheduledDate: formatScheduledDate(nextRunAt),
       });
+      acceptedCount += 1;
       await createSmsLog({
         recipientId: recipient.memberId || recipient.phone,
         recipientName: recipient.name || recipient.phone,
         recipientPhone: recipient.phone,
         message,
         type: "automation",
-        status: "pending",
-        sentAt: nextRunAt,
+        status: "sent",
+        sentAt: now,
         createdBy: "system",
       });
     } catch (error) {
@@ -295,20 +307,56 @@ const runDueAutomation = async (automation: AutomationRule, churchName: string, 
     }
   }
 
-  automation.lastRunAt = nextRunAt;
+  if (acceptedCount === 0) return;
+
+  automation.lastRunAt = now;
   automation.lastRunKey = scheduleKey;
+  automation.updatedAt = now;
+  console.log(
+    `[Automation] sent "${automation.name}" (occurrence: ${nextRunAt.toISOString()}, ${acceptedCount}/${recipients.length} accepted)`
+  );
 }
 
 export const runDueAutomations = async (): Promise<void> => {
   const settings = await Settings.findOne();
-  if (!settings?.smsEnabled) return;
-  if (String(settings.smsProvider || "").toLowerCase() !== "arkesel") return;
+  if (!settings?.smsEnabled) {
+    console.warn("[Automation] scheduler skipped: SMS is disabled in Settings");
+    return;
+  }
+  if (String(settings.smsProvider || "").toLowerCase() !== "arkesel") {
+    console.warn("[Automation] scheduler skipped: SMS provider is not Arkesel");
+    return;
+  }
 
   const fromSettings = Array.isArray(settings.automations) ? (settings.automations as AutomationRule[]) : [];
   const fromCollection = (await AutomationCollection.find().sort({ createdAt: -1 }))
     .map(mapAutomationRule)
     .filter(Boolean) as AutomationRule[];
-  const automations = mergeAutomationRules(fromSettings, fromCollection);
+
+  const automations = (() => {
+    const merged = new Map<string, AutomationRule>();
+    for (const source of [fromSettings, fromCollection]) {
+      for (const automation of source) {
+        if (!automation?.id) continue;
+        const existing = merged.get(automation.id);
+        if (!existing || automationPriority(automation) >= automationPriority(existing)) {
+          merged.set(automation.id, automation);
+        }
+      }
+    }
+    return Array.from(merged.values()).sort((a, b) => automationPriority(b) - automationPriority(a));
+  })();
+
+  const shouldSyncSettings =
+    fromCollection.some((automation) => !fromSettings.some((item) => item.id === automation.id)) ||
+    fromCollection.some((automation) => {
+      const matching = fromSettings.find((item) => item.id === automation.id);
+      return matching ? automationPriority(automation) > automationPriority(matching) : false;
+    });
+
+  if (shouldSyncSettings && automations.length > 0) {
+    await Settings.findByIdAndUpdate(settings._id, { automations, updatedAt: new Date() }).catch(() => undefined);
+  }
   if (automations.length === 0) return;
 
   const resolvedKey = await resolveArkeselApiKey({
@@ -347,15 +395,23 @@ export const runDueAutomations = async (): Promise<void> => {
 
 export const startAutomationScheduler = (): void => {
   const run = async () => {
+    if (automationSchedulerRunning) {
+      console.log("[Automation] scheduler skipped: previous run still in progress");
+      return;
+    }
+    automationSchedulerRunning = true;
     try {
       await runDueAutomations();
     } catch (error) {
       console.error("Automation scheduler failed", error);
+    } finally {
+      automationSchedulerRunning = false;
     }
   };
 
-  run().catch(() => undefined);
+  console.log("[Automation] scheduler started");
+  void run();
   setInterval(() => {
-    run().catch(() => undefined);
+    void run();
   }, 60 * 1000);
 };

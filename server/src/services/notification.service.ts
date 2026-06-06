@@ -455,6 +455,47 @@ export const notificationService = {
         "birthday celebrant"
       );
 
+      const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
+      if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && celebrantPhone) {
+        try {
+          const resolvedKey = await resolveArkeselApiKey({
+            configuredApiKey: config.smsApiKey,
+            fallbackApiKey: env.ARKESEL_API_KEY,
+          });
+
+          await sendArkeselSMS({
+            apiKey: resolvedKey.apiKey,
+            sender: config.smsSenderId,
+            message: celebrantMessage,
+            recipients: [celebrantPhone],
+          });
+
+          await createSmsLog({
+            recipientId: String(member._id || celebrantPhone),
+            recipientName: fullName || celebrantPhone,
+            recipientPhone: celebrantPhone,
+            message: celebrantMessage,
+            type: "birthday",
+            status: "sent",
+            sentAt: new Date(),
+            createdBy: "system",
+          });
+        } catch (error) {
+          const failureReason = error instanceof Error ? error.message : "SMS delivery failed";
+          await createSmsLog({
+            recipientId: String(member._id || celebrantPhone),
+            recipientName: fullName || celebrantPhone,
+            recipientPhone: celebrantPhone,
+            message: celebrantMessage,
+            type: "birthday",
+            status: "failed",
+            failureReason,
+            createdBy: "system",
+          });
+          console.error("Notification send failed: birthday celebrant sms", error);
+        }
+      }
+
       await BirthdayEmailLog.create({
         memberId: member._id,
         dateKey,

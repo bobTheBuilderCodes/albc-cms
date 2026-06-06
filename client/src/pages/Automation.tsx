@@ -34,6 +34,8 @@ const weekDays = [
   "Saturday",
 ];
 
+const TIME_ZONE = "Africa/Accra";
+const RUN_GRACE_MINUTES = 10;
 const monthDays = Array.from({ length: 31 }, (_, index) => index + 1);
 
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -75,6 +77,142 @@ const conditionTone = (active: boolean, isDark: boolean) =>
     : isDark
       ? "bg-slate-800 text-slate-300"
       : "bg-neutral-100 text-neutral-700";
+
+const getZonedParts = (date: Date): Record<string, string> => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    weekday: "long",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  return parts.reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== "literal") acc[part.type] = part.value;
+    return acc;
+  }, {});
+};
+
+const parseTime = (value?: string): { hour: number; minute: number } => {
+  const match = String(value || "").match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return { hour: 8, minute: 0 };
+  return { hour: Number(match[1]), minute: Number(match[2]) };
+};
+
+const buildDateAtTime = (baseDate: Date, hour: number, minute: number): Date => {
+  const date = new Date(baseDate);
+  date.setUTCHours(hour, minute, 0, 0);
+  return date;
+};
+
+const getNextWeeklyRunAt = (automation: Automation): Date | null => {
+  const days = Array.isArray(automation.dayOfWeek) ? automation.dayOfWeek : [];
+  if (days.length === 0) return null;
+  const { hour, minute } = parseTime(automation.sendTime || "08:00");
+  const now = new Date();
+
+  for (let offset = 0; offset < 14; offset += 1) {
+    const candidate = new Date(now);
+    candidate.setUTCDate(candidate.getUTCDate() + offset);
+    const zoned = getZonedParts(candidate);
+    const weekday = zoned.weekday || weekDays[candidate.getUTCDay()];
+    if (!days.includes(weekday)) continue;
+
+    const scheduled = buildDateAtTime(candidate, hour, minute);
+    const ageMinutes = (now.getTime() - scheduled.getTime()) / 60000;
+    if (scheduled.getTime() <= now.getTime() && ageMinutes > RUN_GRACE_MINUTES) continue;
+    return scheduled;
+  }
+
+  return null;
+};
+
+const getNextMonthlyRunAt = (automation: Automation): Date | null => {
+  const dayOfMonth = Number(automation.dayOfMonth || 1);
+  const { hour, minute } = parseTime(automation.sendTime || "08:00");
+  const now = new Date();
+
+  for (let offset = 0; offset < 14; offset += 1) {
+    const candidate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1, hour, minute, 0, 0));
+    const target = new Date(Date.UTC(candidate.getUTCFullYear(), candidate.getUTCMonth(), dayOfMonth, hour, minute, 0, 0));
+    if (target.getUTCMonth() !== candidate.getUTCMonth()) continue;
+    const ageMinutes = (now.getTime() - target.getTime()) / 60000;
+    if (target.getTime() <= now.getTime() && ageMinutes > RUN_GRACE_MINUTES) continue;
+    return target;
+  }
+
+  return null;
+};
+
+const getNextCustomRunAt = (automation: Automation): Date | null => {
+  const rule = String(automation.customRule || "").trim().toLowerCase();
+  if (!rule) return null;
+  const now = new Date();
+
+  if (rule.includes("daily") || rule.includes("every day")) {
+    const { hour, minute } = parseTime(automation.sendTime || "08:00");
+    const today = buildDateAtTime(now, hour, minute);
+    const ageMinutes = (now.getTime() - today.getTime()) / 60000;
+    if (today.getTime() > now.getTime() || ageMinutes <= RUN_GRACE_MINUTES) return today;
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    return tomorrow;
+  }
+
+  const minuteInterval = rule.match(/every\s+(\d+)\s+minutes?/i);
+  if (minuteInterval) {
+    const interval = Math.max(1, Number(minuteInterval[1]));
+    const next = new Date(now);
+    next.setUTCSeconds(0, 0);
+    const remainder = next.getUTCMinutes() % interval;
+    const currentSlot = new Date(next);
+    currentSlot.setUTCMinutes(next.getUTCMinutes() - remainder);
+    const ageMinutes = (now.getTime() - currentSlot.getTime()) / 60000;
+    if (currentSlot.getTime() <= now.getTime() && ageMinutes <= RUN_GRACE_MINUTES) {
+      return currentSlot;
+    }
+    const future = new Date(currentSlot);
+    future.setUTCMinutes(currentSlot.getUTCMinutes() + interval);
+    return future;
+  }
+
+  const weekly = rule.match(/every\s+(\d+)\s+weeks?\s+on\s+(.+)/i);
+  if (weekly) {
+    const days = weekly[2]
+      .split(",")
+      .map((day) => day.trim())
+      .filter(Boolean);
+    return getNextWeeklyRunAt({ ...automation, dayOfWeek: days });
+  }
+
+  const monthly = rule.match(/every\s+(\d+)\s+months?\s+on\s+day\s+(\d+)/i);
+  if (monthly) {
+    return getNextMonthlyRunAt({ ...automation, dayOfMonth: Number(monthly[2]) });
+  }
+
+  return null;
+};
+
+const getNextRunAt = (automation: Automation): Date | null => {
+  if (automation.conditionType === "weekly") return getNextWeeklyRunAt(automation);
+  if (automation.conditionType === "monthly") return getNextMonthlyRunAt(automation);
+  if (automation.conditionType === "custom") return getNextCustomRunAt(automation);
+  return null;
+};
+
+const formatDateTime = (value?: string | null): string => {
+  if (!value) return "Not run yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not run yet";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+};
 
 export function Automation() {
   const navigate = useNavigate();
@@ -298,6 +436,12 @@ export function Automation() {
                 <div className="mt-3 space-y-1 text-xs text-neutral-600 dark:text-slate-300">
                   <p>{describeCondition(automation)}</p>
                   <p className="line-clamp-2">{automation.description || "No description provided."}</p>
+                  <p>
+                    <span className="font-semibold">Last run:</span> {formatDateTime(automation.lastRunAt)}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Next run:</span> {formatDateTime(getNextRunAt(automation)?.toISOString() || null)}
+                  </p>
                 </div>
               </div>
             ))
@@ -313,6 +457,8 @@ export function Automation() {
                 <th className={`px-6 py-3 text-left text-sm font-medium ${tableTextClass}`}>Name</th>
                 <th className={`px-6 py-3 text-left text-sm font-medium ${tableTextClass}`}>Template</th>
                 <th className={`px-6 py-3 text-left text-sm font-medium ${tableTextClass}`}>Condition</th>
+                <th className={`px-6 py-3 text-left text-sm font-medium ${tableTextClass}`}>Last run</th>
+                <th className={`px-6 py-3 text-left text-sm font-medium ${tableTextClass}`}>Next run</th>
                 <th className={`px-6 py-3 text-left text-sm font-medium ${tableTextClass}`}>Status</th>
                 <th className={`px-6 py-3 text-right text-sm font-medium ${tableTextClass}`}>Actions</th>
               </tr>
@@ -331,6 +477,8 @@ export function Automation() {
                     </td>
                     <td className={`px-6 py-4 text-sm ${isDark ? "text-slate-200" : "text-neutral-700"}`}>{automation.templateName}</td>
                     <td className={`px-6 py-4 text-sm ${isDark ? "text-slate-200" : "text-neutral-700"}`}>{describeCondition(automation)}</td>
+                    <td className={`px-6 py-4 text-sm ${isDark ? "text-slate-200" : "text-neutral-700"}`}>{formatDateTime(automation.lastRunAt)}</td>
+                    <td className={`px-6 py-4 text-sm ${isDark ? "text-slate-200" : "text-neutral-700"}`}>{formatDateTime(getNextRunAt(automation)?.toISOString() || null)}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${conditionTone(automation.isActive, isDark)}`}>
                         {automation.isActive ? "Active" : "Inactive"}
@@ -377,7 +525,7 @@ export function Automation() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12">
+                  <td colSpan={7} className="px-6 py-12">
                     <EmptyAutomationsState searchQuery={searchQuery} onAdd={() => navigate("/automation/new")} />
                   </td>
                 </tr>

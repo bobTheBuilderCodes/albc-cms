@@ -444,8 +444,12 @@ const mapAutomation = (automation: Automation): Automation => ({
   lastRunAt: automation.lastRunAt ?? null,
 });
 
-const automationTimestamp = (automation: Automation): number =>
-  new Date(automation.updatedAt || automation.createdAt || 0).getTime();
+const automationPriority = (automation: Automation): number => {
+  const baseTime = new Date(automation.lastRunAt || automation.updatedAt || automation.createdAt || 0).getTime();
+  const runBonus = automation.lastRunAt ? 1_000_000_000_000_000 : 0;
+  const keyBonus = automation.lastRunKey ? 1_000_000_000_000 : 0;
+  return runBonus + keyBonus + baseTime;
+};
 
 const mergeAutomations = (...sources: Automation[][]): Automation[] => {
   const merged = new Map<string, Automation>();
@@ -455,7 +459,7 @@ const mergeAutomations = (...sources: Automation[][]): Automation[] => {
       if (!automation?.id) continue;
       const normalized = mapAutomation(automation);
       const existing = merged.get(normalized.id);
-      if (!existing || automationTimestamp(normalized) >= automationTimestamp(existing)) {
+      if (!existing || automationPriority(normalized) >= automationPriority(existing)) {
         merged.set(normalized.id, normalized);
       }
     }
@@ -494,7 +498,7 @@ export async function fetchAutomations(): Promise<Automation[]> {
     if (!automation?.id) return false;
     const matchingRemote = (settings.automations || []).find((item) => item.id === automation.id);
     if (!matchingRemote) return false;
-    return automationTimestamp(automation) > automationTimestamp(matchingRemote as Automation);
+    return automationPriority(automation) > automationPriority(matchingRemote as Automation);
   });
 
   if (hasLocalOnlyAutomation || hasNewerLocalAutomation) {

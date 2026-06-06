@@ -170,6 +170,7 @@ export const sendArkeselSMS = async ({
         "api-key": apiKey,
       },
       body: JSON.stringify({
+        action: "send-sms",
         sender,
         message,
         recipients: sanitizedRecipients,
@@ -258,6 +259,7 @@ export const sendArkeselSMS = async ({
             "api-key": apiKey,
           },
           body: JSON.stringify({
+            action: "send-sms",
             sender,
             message,
             recipients: [recipient],

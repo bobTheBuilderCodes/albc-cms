@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import type { Member } from "../types";
 import { useAuth } from "../contexts/AuthContext";
@@ -46,7 +46,6 @@ const getMemberDepartments = (member: Partial<Pick<Member, "department" | "depar
 
 export function Members() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "inactive"
@@ -61,10 +60,6 @@ export function Members() {
   const { confirm } = useConfirm();
   const toast = useToast();
   const navigate = useNavigate();
-  const currentMembers = filteredMembers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
 
   useEffect(() => {
     const load = async () => {
@@ -78,25 +73,20 @@ export function Members() {
   }, []);
 
   useEffect(() => {
-    filterMembers();
-  }, [members, searchQuery, statusFilter, departmentFilter]);
-
-  useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, departmentFilter]);
 
- 
-
-  const filterMembers = () => {
+  const filteredMembers = useMemo(() => {
     let filtered = [...members];
 
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (m) =>
-          m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          m.phoneNumber.includes(searchQuery) ||
-          getMemberDepartments(m).join(" ").toLowerCase().includes(searchQuery.toLowerCase())
+          m.fullName.toLowerCase().startsWith(query) ||
+          m.email.toLowerCase().startsWith(query) ||
+          m.phoneNumber.startsWith(searchQuery) ||
+          getMemberDepartments(m).some((dept) => dept.toLowerCase().startsWith(query))
       );
     }
 
@@ -108,8 +98,16 @@ export function Members() {
       filtered = filtered.filter((m) => getMemberDepartments(m).includes(departmentFilter));
     }
 
-    setFilteredMembers(filtered);
-  };
+    return filtered;
+  }, [members, searchQuery, statusFilter, departmentFilter]);
+
+  useEffect(() => {
+    if (currentPage > Math.max(1, Math.ceil(filteredMembers.length / itemsPerPage))) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, filteredMembers.length]);
+
+  const currentMembers = filteredMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const departments = Array.from(new Set(members.flatMap((m) => getMemberDepartments(m))));
 
