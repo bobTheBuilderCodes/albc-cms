@@ -23,6 +23,19 @@ export function Messaging() {
   }, []);
 
   useEffect(() => {
+    const refreshDepartments = () => {
+      loadData().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load messaging data'));
+    };
+
+    window.addEventListener('storage', refreshDepartments);
+    window.addEventListener('church-settings-updated', refreshDepartments);
+    return () => {
+      window.removeEventListener('storage', refreshDepartments);
+      window.removeEventListener('church-settings-updated', refreshDepartments);
+    };
+  }, []);
+
+  useEffect(() => {
     const syncTemplates = () => setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
     window.addEventListener('sms-templates-updated', syncTemplates);
     window.addEventListener('storage', syncTemplates);
@@ -35,29 +48,40 @@ export function Messaging() {
   const loadData = async () => {
     const [memberData, settings] = await Promise.all([fetchMembers(), fetchSettings()]);
     setMembers(memberData);
-    let configuredDepartments: string[] = [];
+    const departmentPool = new Set<string>();
 
-    if (settings?.departments && settings.departments.length > 0) {
-      configuredDepartments = settings.departments;
-    } else {
-      const localDepartmentsRaw = localStorage.getItem('cms_departments');
-      if (localDepartmentsRaw) {
-        try {
-          const localDepartments = JSON.parse(localDepartmentsRaw);
-          if (Array.isArray(localDepartments)) {
-            configuredDepartments = localDepartments.filter(Boolean);
-          }
-        } catch {
-          configuredDepartments = [];
-        }
+    const addDepartments = (value: unknown) => {
+      if (!Array.isArray(value)) return;
+      value.forEach((entry) => {
+        const dept = String(entry || '').trim();
+        if (dept) departmentPool.add(dept);
+      });
+    };
+
+    addDepartments(settings?.departments);
+
+    const localDepartmentsRaw = localStorage.getItem('cms_departments');
+    if (localDepartmentsRaw) {
+      try {
+        addDepartments(JSON.parse(localDepartmentsRaw));
+      } catch {
+        // Ignore malformed local cache and continue with server/member data.
       }
     }
 
-    if (configuredDepartments.length > 0) {
-      setDepartments(configuredDepartments);
-    } else {
-      setDepartments(Array.from(new Set(memberData.map((m) => m.department))).filter(Boolean));
+    memberData.forEach((member) => {
+      const memberDepartments = member.departments?.length ? member.departments : member.department ? [member.department] : [];
+      memberDepartments.forEach((dept) => {
+        const normalized = String(dept || '').trim();
+        if (normalized) departmentPool.add(normalized);
+      });
+    });
+
+    if (departmentPool.size === 0) {
+      departmentPool.add('General');
     }
+
+    setDepartments(Array.from(departmentPool).sort((a, b) => a.localeCompare(b)));
 
     const balance = await fetchSmsBalance().catch(() => null);
     setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
@@ -163,8 +187,10 @@ function SendMessageTab({
     phone: string;
   };
 
-  const [audience, setAudience] = useState<'all' | 'department' | 'manual'>('all');
+  const [audience, setAudience] = useState<'all' | 'department' | 'members' | 'manual'>('all');
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const [manualNumbers, setManualNumbers] = useState('');
   const [message, setMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -193,7 +219,20 @@ function SendMessageTab({
     }
     if (audience === 'department') {
       return members
-        .filter((member) => member.department === selectedDepartment)
+        .filter((member) =>
+          (member.departments?.length ? member.departments : member.department ? [member.department] : [])
+            .some((dept) => dept === selectedDepartment)
+        )
+        .map((member) => ({
+          memberId: member.id,
+          name: member.fullName,
+          phone: member.phoneNumber,
+        }));
+    }
+    if (audience === 'members') {
+      const selectedSet = new Set(selectedMemberIds);
+      return members
+        .filter((member) => selectedSet.has(member.id))
         .map((member) => ({
           memberId: member.id,
           name: member.fullName,
@@ -245,6 +284,22 @@ function SendMessageTab({
   };
 
   const recipients = getRecipients();
+  const filteredMembers = members
+    .filter((member) => {
+      const query = memberSearch.trim().toLowerCase();
+      if (!query) return true;
+      const searchable = [
+        member.fullName,
+        member.phoneNumber,
+        member.email,
+        ...(member.departments || []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return searchable.includes(query);
+    })
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
   return (
     <div className="w-full p-4 sm:p-6">
@@ -323,6 +378,95 @@ function SendMessageTab({
                       <option key={dept} value={dept}>{dept}</option>
                     ))}
                   </select>
+                )}
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 p-4 border border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-50 transition-colors">
+              <input
+                type="radio"
+                name="audience"
+                value="members"
+                checked={audience === 'members'}
+                onChange={(e) => setAudience(e.target.value as any)}
+                className="w-4 h-4 text-primary-600"
+              />
+              <div className="flex-1">
+                <p className="text-sm text-neutral-900">Specific Members</p>
+                <p className="text-xs text-neutral-500">Search and select exact people</p>
+                {audience === 'members' && (
+                  <div className="mt-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search members by name, phone, email, or department"
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+
+                    <div className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 bg-white">
+                      {filteredMembers.length > 0 ? (
+                        filteredMembers.map((member) => {
+                          const checked = selectedMemberIds.includes(member.id);
+                          const deptLabel = (member.departments?.length ? member.departments : [member.department]).filter(Boolean).join(', ');
+                          return (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedMemberIds((prev) =>
+                                  prev.includes(member.id)
+                                    ? prev.filter((id) => id !== member.id)
+                                    : [...prev, member.id]
+                                );
+                              }}
+                              className={`w-full flex items-start gap-3 px-3 py-2 text-left border-b border-neutral-100 last:border-b-0 transition-colors ${
+                                checked ? 'bg-primary-50' : 'hover:bg-neutral-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                readOnly
+                                className="mt-1 w-4 h-4 text-primary-600"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-neutral-900 truncate">{member.fullName}</p>
+                                <p className="text-xs text-neutral-500 truncate">
+                                  {member.phoneNumber || 'No phone'}{member.email ? ` · ${member.email}` : ''}
+                                </p>
+                                {deptLabel ? <p className="text-xs text-neutral-400 truncate">{deptLabel}</p> : null}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="px-3 py-4 text-sm text-neutral-500">No members match your search</div>
+                      )}
+                    </div>
+
+                    {selectedMemberIds.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedMemberIds.map((id) => {
+                          const member = members.find((item) => item.id === id);
+                          if (!member) return null;
+                          return (
+                            <span key={id} className="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs text-primary-700">
+                              {member.fullName}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedMemberIds((prev) => prev.filter((item) => item !== id))}
+                                className="text-primary-500 hover:text-primary-700"
+                                aria-label={`Remove ${member.fullName}`}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </label>
