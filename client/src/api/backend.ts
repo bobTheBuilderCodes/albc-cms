@@ -1038,6 +1038,7 @@ type ApiSettings = {
   departments?: string[];
   enableBirthdayNotifications?: boolean;
   birthdayMessageTemplate?: string;
+  birthdayCongregationMessageTemplate?: string;
   birthdaySendDaysBefore?: number;
   birthdaySendTime?: string;
   enableProgramReminders?: boolean;
@@ -1066,6 +1067,7 @@ export type SettingsPayload = {
   departments?: string[];
   enableBirthdayNotifications?: boolean;
   birthdayMessageTemplate?: string;
+  birthdayCongregationMessageTemplate?: string;
   birthdaySendDaysBefore?: number;
   birthdaySendTime?: string;
   enableProgramReminders?: boolean;
@@ -1097,6 +1099,7 @@ export async function fetchSettings(): Promise<SettingsPayload | null> {
     departments: settings.departments || [],
     enableBirthdayNotifications: settings.enableBirthdayNotifications,
     birthdayMessageTemplate: settings.birthdayMessageTemplate,
+    birthdayCongregationMessageTemplate: settings.birthdayCongregationMessageTemplate,
     birthdaySendDaysBefore: settings.birthdaySendDaysBefore,
     birthdaySendTime: settings.birthdaySendTime,
     enableProgramReminders: settings.enableProgramReminders,
@@ -1124,6 +1127,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     departments: payload.departments,
     enableBirthdayNotifications: payload.enableBirthdayNotifications,
     birthdayMessageTemplate: payload.birthdayMessageTemplate,
+    birthdayCongregationMessageTemplate: payload.birthdayCongregationMessageTemplate,
     birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
     birthdaySendTime: payload.birthdaySendTime,
     enableProgramReminders: payload.enableProgramReminders,
@@ -1151,6 +1155,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       departments: payload.departments || [],
       enableBirthdayNotifications: payload.enableBirthdayNotifications,
       birthdayMessageTemplate: payload.birthdayMessageTemplate,
+      birthdayCongregationMessageTemplate: payload.birthdayCongregationMessageTemplate,
       birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
       birthdaySendTime: payload.birthdaySendTime,
       enableProgramReminders: payload.enableProgramReminders,
@@ -1179,6 +1184,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       departments: res.data.data.departments || [],
       enableBirthdayNotifications: res.data.data.enableBirthdayNotifications,
       birthdayMessageTemplate: res.data.data.birthdayMessageTemplate,
+      birthdayCongregationMessageTemplate: res.data.data.birthdayCongregationMessageTemplate,
       birthdaySendDaysBefore: res.data.data.birthdaySendDaysBefore,
       birthdaySendTime: res.data.data.birthdaySendTime,
       enableProgramReminders: res.data.data.enableProgramReminders,
@@ -1206,6 +1212,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     departments: payload.departments || [],
     enableBirthdayNotifications: payload.enableBirthdayNotifications,
     birthdayMessageTemplate: payload.birthdayMessageTemplate,
+    birthdayCongregationMessageTemplate: payload.birthdayCongregationMessageTemplate,
     birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
     birthdaySendTime: payload.birthdaySendTime,
     enableProgramReminders: payload.enableProgramReminders,
@@ -1234,6 +1241,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     departments: res.data.data.departments || [],
     enableBirthdayNotifications: res.data.data.enableBirthdayNotifications,
     birthdayMessageTemplate: res.data.data.birthdayMessageTemplate,
+    birthdayCongregationMessageTemplate: res.data.data.birthdayCongregationMessageTemplate,
     birthdaySendDaysBefore: res.data.data.birthdaySendDaysBefore,
     birthdaySendTime: res.data.data.birthdaySendTime,
     enableProgramReminders: res.data.data.enableProgramReminders,
@@ -1277,7 +1285,7 @@ type ApiSmsLog = {
   recipientName: string;
   recipientPhone: string;
   message: string;
-  type: "program_reminder" | "birthday" | "manual" | "announcement" | "automation";
+  type: "program_reminder" | "birthday" | "birthday_broadcast" | "manual" | "announcement" | "automation";
   status: "sent" | "failed" | "pending" | "skipped";
   sentAt?: string;
   failureReason?: string;

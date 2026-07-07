@@ -2,6 +2,7 @@ import Member, { IMember } from "../modules/members/member.model";
 import Settings from "../modules/settings/settings.model";
 import User, { IUser } from "../modules/users/user.model";
 import BirthdayEmailLog from "../modules/notifications/birthday-email-log.model";
+import BirthdayBroadcastLog from "../modules/notifications/birthday-broadcast-log.model";
 import InAppNotification, {
   InAppNotificationType,
 } from "../modules/notifications/in-app-notification.model";
@@ -130,6 +131,14 @@ const applyBirthdayTemplate = (template: string, name: string, churchName: strin
     .join(churchName);
 };
 
+const applyBirthdayBroadcastTemplate = (template: string, name: string, churchName: string): string => {
+  return template
+    .split("{{name}}")
+    .join(name)
+    .split("{{church_name}}")
+    .join(churchName);
+};
+
 const applyTemplate = (template: string, replacements: Record<string, string>): string => {
   return Object.entries(replacements).reduce((output, [key, value]) => {
     return output.split(`{{${key}}}`).join(value);
@@ -192,7 +201,7 @@ const safeSend = async (task: () => Promise<void>, label: string): Promise<void>
 
 const getNotificationConfig = async () => {
   const settings = await Settings.findOne().select(
-    "churchName smsEnabled smsProvider smsApiKey smsSenderId enableBirthdayNotifications birthdayMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
+    "churchName smsEnabled smsProvider smsApiKey smsSenderId enableBirthdayNotifications birthdayMessageTemplate birthdayCongregationMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
   );
 
   return {
@@ -205,6 +214,9 @@ const getNotificationConfig = async () => {
     birthdayMessageTemplate:
       settings?.birthdayMessageTemplate ||
       "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
+    birthdayCongregationMessageTemplate:
+      settings?.birthdayCongregationMessageTemplate ||
+      "Today is {{name}}'s birthday. Please join us in celebrating and wish them well. - {{church_name}}",
     birthdaySendDaysBefore: Number(settings?.birthdaySendDaysBefore ?? 0),
     birthdaySendTime: settings?.birthdaySendTime || "08:00",
     program: settings?.enableProgramReminders ?? true,
@@ -479,34 +491,19 @@ export const notificationService = {
     const allMemberEmails = await getMemberEmails();
 
     for (const member of birthdayMembers) {
-      const existingLog = await BirthdayEmailLog.findOne({
-        memberId: member._id,
-        dateKey: birthdayDateKey,
-      });
-
-      if (existingLog) {
-        console.log("[Birthday] skipped: already processed", {
-          memberId: String(member._id),
-          birthdayDateKey,
-        });
-        continue;
-      }
+      const [celebrantLog, broadcastLog] = await Promise.all([
+        BirthdayEmailLog.findOne({ memberId: member._id, dateKey: birthdayDateKey }),
+        BirthdayBroadcastLog.findOne({ memberId: member._id, dateKey: birthdayDateKey }),
+      ]);
 
       const fullName = memberDisplayName(member);
-      await safeSend(
-        () =>
-          createInAppNotificationForUsers({
-            type: "birthday",
-            title: "Birthday Notification",
-            message: `Today is ${fullName}'s birthday.`,
-            actionUrl: `/members/${String(member._id)}`,
-            dedupeKey: `birthday:${String(member._id)}:${birthdayDateKey}`,
-          }),
-        "birthday in-app"
-      );
-
       const celebrantMessage = applyBirthdayTemplate(
         config.birthdayMessageTemplate,
+        fullName,
+        config.churchName
+      );
+      const congregationMessage = applyBirthdayBroadcastTemplate(
+        config.birthdayCongregationMessageTemplate,
         fullName,
         config.churchName
       );
@@ -515,25 +512,71 @@ export const notificationService = {
         ? allMemberEmails.filter((email) => email.toLowerCase() !== celebrantEmail.toLowerCase())
         : allMemberEmails;
 
-      if (others.length > 0) {
-        await safeSend(
-          () =>
-            emailService.send({
-              to: others,
-              subject: `Wish ${fullName} a Happy Birthday`,
-              text: `Today is ${fullName}'s birthday. Please send them your best wishes and prayers.`,
-              html: buildBrandedEmail({
-                churchName: config.churchName,
-                title: "Birthday Reminder",
-                message: `Today is ${fullName}'s birthday.\nPlease send your best wishes and prayers.`,
-                previewText: `${fullName}'s birthday at ${config.churchName}`,
-              }),
+      if (!broadcastLog && others.length > 0) {
+        try {
+          await emailService.send({
+            to: others,
+            subject: `Wish ${fullName} a Happy Birthday`,
+            text: congregationMessage,
+            html: buildBrandedEmail({
+              churchName: config.churchName,
+              title: "Birthday Reminder",
+              message: congregationMessage,
+              previewText: `${fullName}'s birthday at ${config.churchName}`,
             }),
-          "birthday broadcast"
-        );
+          });
+
+          await Promise.all([
+            BirthdayBroadcastLog.create({ memberId: member._id, dateKey: birthdayDateKey }),
+            createSmsLog({
+              recipientId: `birthday-broadcast-${member._id}-${birthdayDateKey}`,
+              recipientName: "Birthday broadcast",
+              recipientPhone: "broadcast",
+              message: congregationMessage,
+              type: "birthday_broadcast",
+              status: "sent",
+              sentAt: new Date(),
+              createdBy: "system",
+            }),
+          ]);
+
+          console.log("[Birthday] congregation broadcast sent", {
+            memberId: String(member._id),
+            member: fullName,
+            birthdayDateKey,
+          });
+        } catch (error) {
+          const failureReason = error instanceof Error ? error.message : "Birthday broadcast failed";
+          await createSmsLog({
+            recipientId: `birthday-broadcast-${member._id}-${birthdayDateKey}`,
+            recipientName: "Birthday broadcast",
+            recipientPhone: "broadcast",
+            message: congregationMessage,
+            type: "birthday_broadcast",
+            status: "failed",
+            failureReason,
+            createdBy: "system",
+          });
+          console.error("[Birthday] congregation broadcast failed", {
+            memberId: String(member._id),
+            member: fullName,
+            birthdayDateKey,
+            failureReason,
+          });
+        }
+      } else if (broadcastLog) {
+        console.log("[Birthday] congregation broadcast skipped: already processed", {
+          memberId: String(member._id),
+          birthdayDateKey,
+        });
+      } else {
+        console.log("[Birthday] congregation broadcast skipped: no recipients", {
+          memberId: String(member._id),
+          birthdayDateKey,
+        });
       }
 
-      if (celebrantEmail) {
+      if (!celebrantLog && celebrantEmail) {
         await safeSend(
           () =>
             emailService.send({
@@ -549,12 +592,17 @@ export const notificationService = {
             }),
           "birthday celebrant"
         );
-      } else {
+      } else if (!celebrantEmail) {
         console.warn(`Birthday email skipped for "${fullName}": no email on member record`);
+      } else {
+        console.log("[Birthday] celebrant email skipped: already processed", {
+          memberId: String(member._id),
+          birthdayDateKey,
+        });
       }
 
       const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
-      if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && celebrantPhone) {
+      if (!celebrantLog && config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && celebrantPhone) {
         try {
           const resolvedKey = await resolveArkeselApiKey({
             configuredApiKey: config.smsApiKey,
@@ -592,6 +640,11 @@ export const notificationService = {
           });
           console.error("Notification send failed: birthday celebrant sms", error);
         }
+      } else if (celebrantLog) {
+        console.log("[Birthday] celebrant SMS skipped: already processed", {
+          memberId: String(member._id),
+          birthdayDateKey,
+        });
       } else {
         const reason = !celebrantPhone
           ? "Skipped: no phone number on member record"
@@ -613,10 +666,12 @@ export const notificationService = {
         });
       }
 
-      await BirthdayEmailLog.create({
-        memberId: member._id,
-        dateKey: birthdayDateKey,
-      });
+      if (!celebrantLog) {
+        await BirthdayEmailLog.create({
+          memberId: member._id,
+          dateKey: birthdayDateKey,
+        });
+      }
 
       console.log("[Birthday] processed", {
         memberId: String(member._id),

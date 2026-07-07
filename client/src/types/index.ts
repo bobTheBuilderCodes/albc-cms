@@ -108,7 +108,7 @@ export interface Attendance {
 }
 
 export type SMSStatus = 'sent' | 'failed' | 'pending' | 'skipped';
-export type SMSType = 'program_reminder' | 'birthday' | 'manual' | 'announcement' | 'automation';
+export type SMSType = 'program_reminder' | 'birthday' | 'birthday_broadcast' | 'manual' | 'announcement' | 'automation';
 
 export interface SMSLog {
   id: string;

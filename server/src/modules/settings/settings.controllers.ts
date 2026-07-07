@@ -13,6 +13,8 @@ const defaultDonationNotificationTemplate =
   "Hello {{member_name}},\nA new finance entry has been recorded.\nType: {{entry_type}}\nAmount: {{amount}}\nNote: {{note}}\n- {{church_name}}";
 const defaultUserAddedNotificationTemplate =
   "Hello {{user_name}},\nYour account has been created.\nEmail: {{user_email}}\nPassword: {{password}}\nRole: {{role}}\nPlease log in and change your password immediately.\n- {{church_name}}";
+const defaultBirthdayCongregationMessageTemplate =
+  "Today is {{name}}'s birthday. Please join us in celebrating and wish them well. - {{church_name}}";
 const sanitizeAutomationRule = (automation: any) => {
   if (!automation || typeof automation !== "object") return null;
   const id = String(automation.id || automation._id || "").trim();
@@ -65,6 +67,11 @@ const settings = await Settings.create({
       typeof req.body.birthdayMessageTemplate === "string" && req.body.birthdayMessageTemplate.trim().length > 0
         ? req.body.birthdayMessageTemplate.trim()
         : "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
+    birthdayCongregationMessageTemplate:
+      typeof req.body.birthdayCongregationMessageTemplate === "string" &&
+      req.body.birthdayCongregationMessageTemplate.trim().length > 0
+        ? req.body.birthdayCongregationMessageTemplate.trim()
+        : defaultBirthdayCongregationMessageTemplate,
     birthdaySendDaysBefore:
       req.body.birthdaySendDaysBefore === undefined ? 0 : Number(req.body.birthdaySendDaysBefore),
     birthdaySendTime:
@@ -138,6 +145,9 @@ export const updateSettings = asyncHandler(async (req: Request, res: Response) =
   }
   if (isDefined(req.body.birthdayMessageTemplate)) {
     updates.birthdayMessageTemplate = String(req.body.birthdayMessageTemplate || "").trim();
+  }
+  if (isDefined(req.body.birthdayCongregationMessageTemplate)) {
+    updates.birthdayCongregationMessageTemplate = String(req.body.birthdayCongregationMessageTemplate || "").trim();
   }
   if (isDefined(req.body.birthdaySendDaysBefore)) {
     updates.birthdaySendDaysBefore = Number(req.body.birthdaySendDaysBefore);

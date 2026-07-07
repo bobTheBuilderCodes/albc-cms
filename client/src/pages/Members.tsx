@@ -54,6 +54,7 @@ export function Members() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const { user } = useAuth();
@@ -107,7 +108,18 @@ export function Members() {
     }
   }, [currentPage, filteredMembers.length]);
 
+  useEffect(() => {
+    setSelectedMemberIds((prev) =>
+      prev.filter((id) => filteredMembers.some((member) => member.id === id))
+    );
+  }, [filteredMembers]);
+
   const currentMembers = filteredMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const currentMemberIds = currentMembers.map((member) => member.id);
+  const allCurrentPageSelected =
+    currentMembers.length > 0 && currentMemberIds.every((id) => selectedMemberIds.includes(id));
+  const someCurrentPageSelected =
+    currentMembers.some((member) => selectedMemberIds.includes(member.id)) && !allCurrentPageSelected;
 
   const departments = Array.from(new Set(members.flatMap((m) => getMemberDepartments(m))));
 
@@ -138,6 +150,43 @@ export function Members() {
     });
   };
 
+  const bulkDeleteMembers = async () => {
+    if (selectedMemberIds.length === 0) return;
+
+    const confirmed = await confirm({
+      title: "Delete Members",
+      message: `Are you sure you want to delete ${selectedMemberIds.length} selected member${selectedMemberIds.length === 1 ? "" : "s"}?`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    const idsToDelete = [...selectedMemberIds];
+    try {
+      await Promise.all(idsToDelete.map((id) => apiDeleteMember(id)));
+      setMembers((prev) => prev.filter((member) => !idsToDelete.includes(member.id)));
+      setSelectedMemberIds([]);
+      toast.success(`Deleted ${idsToDelete.length} member${idsToDelete.length === 1 ? "" : "s"}`);
+
+      idsToDelete.forEach((id) => {
+        const deletedMember = members.find((member) => member.id === id);
+        addAuditLog({
+          id: Date.now().toString() + Math.random(),
+          userId: user!.id,
+          userName: user!.name,
+          userRole: user!.role,
+          action: "member_deleted",
+          resourceType: "member",
+          resourceId: id,
+          details: deletedMember ? `Deleted member: ${deletedMember.fullName}` : "Deleted member",
+          timestamp: new Date().toISOString(),
+        });
+      });
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || "Failed to delete selected members");
+    }
+  };
+
   const exportToCSV = () => {
     const headers = [
       "Full Name",
@@ -163,6 +212,21 @@ export function Members() {
     a.href = url;
     a.download = `members-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
+  };
+
+  const toggleCurrentPageSelection = () => {
+    setSelectedMemberIds((prev) => {
+      if (allCurrentPageSelected) {
+        return prev.filter((id) => !currentMemberIds.includes(id));
+      }
+      return Array.from(new Set([...prev, ...currentMemberIds]));
+    });
+  };
+
+  const toggleMemberSelection = (memberId: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
+    );
   };
 
   return (
@@ -202,6 +266,31 @@ export function Members() {
             </button>
           </div>
         </div>
+
+        {selectedMemberIds.length > 0 && (
+          <div className="mb-4 flex flex-col gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-primary-800">
+              <span className="font-semibold">{selectedMemberIds.length}</span> member
+              {selectedMemberIds.length === 1 ? "" : "s"} selected
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedMemberIds([])}
+                className="rounded-lg border border-primary-200 bg-white px-3 py-2 text-sm font-medium text-primary-700 hover:bg-primary-50 transition-colors"
+              >
+                Clear Selection
+              </button>
+              <button
+                type="button"
+                onClick={bulkDeleteMembers}
+                className="rounded-lg bg-danger-600 px-3 py-2 text-sm font-semibold text-white hover:bg-danger-700 transition-colors"
+              >
+                Delete Selected
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white md:col-span-2 relative">
@@ -246,17 +335,26 @@ export function Members() {
             currentMembers.map((member) => (
               <div key={member.id} className="rounded-xl border border-neutral-200 p-3 bg-white">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${getInitialGradientClass(member.fullName)}`}
-                    >
-                      <span className="text-gray-700 dark:text-white text-sm font-semibold">
-                        {member.fullName.charAt(0)}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm text-neutral-900 truncate">{member.fullName}</p>
-                      <p className="text-xs text-neutral-500 capitalize">{member.gender}</p>
+                  <div className="flex items-start gap-3 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedMemberIds.includes(member.id)}
+                      onChange={() => toggleMemberSelection(member.id)}
+                      className="mt-3 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                      aria-label={`Select ${member.fullName}`}
+                    />
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${getInitialGradientClass(member.fullName)}`}
+                      >
+                        <span className="text-gray-700 dark:text-white text-sm font-semibold">
+                          {member.fullName.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-neutral-900 truncate">{member.fullName}</p>
+                        <p className="text-xs text-neutral-500 capitalize">{member.gender}</p>
+                      </div>
                     </div>
                   </div>
                   <span
@@ -317,6 +415,18 @@ export function Members() {
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
+                <th className="text-left px-4 py-3 text-sm text-neutral-700 w-12">
+                  <input
+                    type="checkbox"
+                    checked={allCurrentPageSelected}
+                    ref={(node) => {
+                      if (node) node.indeterminate = someCurrentPageSelected;
+                    }}
+                    onChange={toggleCurrentPageSelection}
+                    className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    aria-label="Select current page members"
+                  />
+                </th>
                 <th className="text-left px-6 py-3 text-sm text-neutral-700">
                   Member
                 </th>
@@ -344,6 +454,15 @@ export function Members() {
                     key={member.id}
                     className="hover:bg-neutral-50 transition-colors"
                   >
+                    <td className="px-4 py-4 align-top">
+                      <input
+                        type="checkbox"
+                        checked={selectedMemberIds.includes(member.id)}
+                        onChange={() => toggleMemberSelection(member.id)}
+                        className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                        aria-label={`Select ${member.fullName}`}
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div
@@ -446,7 +565,7 @@ export function Members() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-8 h-8 text-neutral-300" />
                       <p className="text-sm text-neutral-700 font-medium">

@@ -92,6 +92,11 @@ export function SmsLogs() {
     }
   };
 
+  const formatSmsType = (type: SMSLog['type']) => {
+    if (type === 'birthday_broadcast') return 'Birthday broadcast sent';
+    return type.replace('_', ' ');
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -164,7 +169,7 @@ export function SmsLogs() {
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs capitalize ${
                     theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-neutral-100 text-neutral-700'
                   }`}>
-                    {log.type.replace('_', ' ')}
+                    {formatSmsType(log.type)}
                   </span>
                 </div>
 
@@ -221,7 +226,7 @@ export function SmsLogs() {
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs capitalize ${
                         theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-neutral-100 text-neutral-700'
                       }`}>
-                        {log.type.replace('_', ' ')}
+                        {formatSmsType(log.type)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
