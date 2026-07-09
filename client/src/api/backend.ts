@@ -1332,8 +1332,24 @@ export async function fetchSmsLogs(): Promise<SMSLog[]> {
 }
 
 export async function fetchSmsBalance(): Promise<ApiSmsBalance> {
-  const res = await API.get<ApiEnvelope<ApiSmsBalance>>("/sms/balance");
-  return res.data.data;
+  const endpoints = ["/sms/balance", "/balance"];
+  let lastError: unknown = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await API.get<ApiEnvelope<ApiSmsBalance>>(endpoint);
+      return res.data.data;
+    } catch (error) {
+      lastError = error;
+      const status = (error as any)?.response?.status;
+      if (status !== 404) {
+        throw error;
+      }
+    }
+  }
+
+  if (lastError) throw lastError;
+  throw new Error("Unable to load SMS balance");
 }
 
 // ---------- In-app Notifications ----------

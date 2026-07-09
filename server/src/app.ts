@@ -5,6 +5,7 @@ import memberRoutes from "./modules/members/member.routes";
 import automationRoutes from "./modules/automation/automation.routes";
 import settingsRoutes from "./modules/settings/settings.routes";
 import smsRoutes from "./modules/sms/sms.routes";
+import { getSmsBalance } from "./modules/sms/sms.controllers";
 import { errorHandler, notFound } from "./middlewares/error.middleware";
 
 const app = express();
@@ -22,6 +23,9 @@ app.use("/api/automations", automationRoutes);
 app.use("/api/automation", automationRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/sms", smsRoutes);
+app.get("/api/sms/balance", getSmsBalance);
+app.get("/api/balance", getSmsBalance);
+app.get("/sms/balance", getSmsBalance);
 
 app.use(notFound);
 app.use(errorHandler);

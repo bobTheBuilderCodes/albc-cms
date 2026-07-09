@@ -83,11 +83,16 @@ export function Messaging() {
 
     setDepartments(Array.from(departmentPool).sort((a, b) => a.localeCompare(b)));
 
-    const balance = await fetchSmsBalance().catch(() => null);
+    const cachedBalanceRaw = localStorage.getItem('cms_sms_balance');
+    const cachedBalance = cachedBalanceRaw ? JSON.parse(cachedBalanceRaw) : null;
+    const balance = await fetchSmsBalance().catch(() => cachedBalance);
     setTemplates(JSON.parse(localStorage.getItem('cms_sms_templates') || '[]'));
     setSmsBalance(balance?.smsBalance ?? null);
     setMainBalance(balance?.mainBalance ?? null);
     setBalanceSource(balance?.apiKeySource ?? '');
+    if (balance) {
+      localStorage.setItem('cms_sms_balance', JSON.stringify(balance));
+    }
   };
 
   const formatBalance = (value: string | number | null): string => {
@@ -152,6 +157,9 @@ export function Messaging() {
             setSmsBalance(refreshedBalance?.smsBalance ?? null);
             setMainBalance(refreshedBalance?.mainBalance ?? null);
             setBalanceSource(refreshedBalance?.apiKeySource ?? '');
+            if (refreshedBalance) {
+              localStorage.setItem('cms_sms_balance', JSON.stringify(refreshedBalance));
+            }
           }}
           smsBalance={smsBalance}
           mainBalance={mainBalance}
