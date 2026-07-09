@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router";
+import { createHashRouter, Navigate } from "react-router";
 import { Root } from "./components/Root";
 import { Messaging } from "./pages/Messaging";
 import { SmsLogs } from "./pages/SmsLogs";
@@ -9,7 +9,7 @@ import { ModuleGuard } from "./components/ModuleGuard";
 import { Members } from "./pages/Members";
 import { Automation, AutomationNew } from "./pages/Automation";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/login",
     element: <Login />,

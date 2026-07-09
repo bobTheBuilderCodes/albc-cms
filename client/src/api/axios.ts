@@ -81,8 +81,8 @@ API.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("auth_user");
-      if (window.location.pathname !== "/login") {
-        window.location.assign("/login");
+      if (window.location.hash !== "#/login") {
+        window.location.hash = "/login";
       }
     }
     return Promise.reject(error);
