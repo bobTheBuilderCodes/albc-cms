@@ -37,7 +37,7 @@ export function Settings() {
       smsSenderId: '',
       enableBirthdayNotifications: true,
       birthdayMessageTemplate: "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
-      birthdayCongregationMessageTemplate: "Today is {{name}}'s birthday. Please join us in celebrating and wish them well. - {{church_name}}",
+      birthdayCongregationSmsTemplate: "Please join us in wishing {{name}} a happy birthday today. You can call them on {{phone}}. - {{church_name}}",
       birthdaySendDaysBefore: 0,
       birthdaySendTime: "08:00",
       enableProgramReminders: true,
@@ -81,8 +81,8 @@ export function Settings() {
             backendSettings.enableBirthdayNotifications ?? prev.enableBirthdayNotifications,
           birthdayMessageTemplate:
             backendSettings.birthdayMessageTemplate ?? prev.birthdayMessageTemplate,
-          birthdayCongregationMessageTemplate:
-            backendSettings.birthdayCongregationMessageTemplate ?? prev.birthdayCongregationMessageTemplate,
+          birthdayCongregationSmsTemplate:
+            backendSettings.birthdayCongregationSmsTemplate ?? prev.birthdayCongregationSmsTemplate,
           birthdaySendDaysBefore:
             backendSettings.birthdaySendDaysBefore ?? prev.birthdaySendDaysBefore,
           birthdaySendTime:
@@ -124,7 +124,7 @@ export function Settings() {
       departments,
       enableBirthdayNotifications: settings.enableBirthdayNotifications,
       birthdayMessageTemplate: settings.birthdayMessageTemplate,
-      birthdayCongregationMessageTemplate: settings.birthdayCongregationMessageTemplate,
+      birthdayCongregationSmsTemplate: settings.birthdayCongregationSmsTemplate,
       birthdaySendDaysBefore: settings.birthdaySendDaysBefore,
       birthdaySendTime: settings.birthdaySendTime,
       enableProgramReminders: settings.enableProgramReminders,
@@ -339,15 +339,15 @@ export function Settings() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-neutral-700 mb-2">Birthday Message Template for Congregation</label>
+                  <label className="block text-sm text-neutral-700 mb-2">Birthday SMS Template for Congregation</label>
                   <textarea
-                    value={settings.birthdayCongregationMessageTemplate || ""}
-                    onChange={(e) => setSettings({ ...settings, birthdayCongregationMessageTemplate: e.target.value })}
+                    value={settings.birthdayCongregationSmsTemplate || ""}
+                    onChange={(e) => setSettings({ ...settings, birthdayCongregationSmsTemplate: e.target.value })}
                     rows={3}
                     className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Message sent to the rest of the church when a member is celebrating a birthday"
+                    placeholder="SMS sent to the rest of the church when a member is celebrating a birthday"
                   />
-                  <p className="text-xs text-neutral-500 mt-1">Available variables: <code>{"{{name}}"}</code>, <code>{"{{church_name}}"}</code></p>
+                  <p className="text-xs text-neutral-500 mt-1">Available variables: <code>{"{{name}}"}</code>, <code>{"{{phone}}"}</code>, <code>{"{{church_name}}"}</code></p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

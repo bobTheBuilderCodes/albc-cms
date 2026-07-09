@@ -38,7 +38,7 @@ export interface ISettings extends Document {
   departments: string[];
   enableBirthdayNotifications: boolean;
   birthdayMessageTemplate: string;
-  birthdayCongregationMessageTemplate: string;
+  birthdayCongregationSmsTemplate: string;
   birthdaySendDaysBefore: number;
   birthdaySendTime: string;
   enableProgramReminders: boolean;
@@ -93,11 +93,10 @@ const settingsSchema = new Schema<ISettings>(
       trim: true,
       default: "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
     },
-    birthdayCongregationMessageTemplate: {
+    birthdayCongregationSmsTemplate: {
       type: String,
       trim: true,
-      default:
-        "Today is {{name}}'s birthday. Please join us in celebrating and wish them well. - {{church_name}}",
+      default: "Please join us in wishing {{name}} a happy birthday today. You can call them on {{phone}}. - {{church_name}}",
     },
     birthdaySendDaysBefore: { type: Number, default: 0, min: 0, max: 30 },
     birthdaySendTime: { type: String, trim: true, default: "08:00" },

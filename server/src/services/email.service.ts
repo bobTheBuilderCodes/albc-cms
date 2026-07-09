@@ -2,6 +2,8 @@ import { env } from "../config/env";
 
 type EmailPayload = {
   to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
   subject: string;
   text: string;
   html?: string;
@@ -161,13 +163,23 @@ class EmailService {
       );
     }
 
-    const recipients = Array.isArray(payload.to) ? payload.to.filter(Boolean) : [payload.to];
-    if (recipients.length === 0) return;
+    const normalizeList = (value?: string | string[]): string[] => {
+      if (!value) return [];
+      const list = Array.isArray(value) ? value : [value];
+      return list.map((item) => String(item || "").trim()).filter(Boolean);
+    };
+
+    const recipients = normalizeList(payload.to);
+    const cc = normalizeList(payload.cc);
+    const bcc = normalizeList(payload.bcc);
+    if (recipients.length === 0 && cc.length === 0 && bcc.length === 0) return;
 
     try {
       await this.transporter.sendMail({
         from: this.senderEmail,
-        to: recipients.join(","),
+        to: recipients.length > 0 ? recipients.join(",") : undefined,
+        cc: cc.length > 0 ? cc : undefined,
+        bcc: bcc.length > 0 ? bcc : undefined,
         subject: payload.subject,
         text: payload.text,
         html: payload.html,

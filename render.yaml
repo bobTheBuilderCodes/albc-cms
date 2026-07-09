@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: albc-cms-api
+    name: albc-cms-server
     runtime: node
     rootDir: server
     buildCommand: npm install --include=dev && npm run build
@@ -26,11 +26,11 @@ services:
         sync: false
 
   - type: web
-    name: albc-cms-web
+    name: albc-cms
     runtime: static
     rootDir: client
     buildCommand: npm install --include=dev && npm run build
-    staticPublishPath: client/dist
+    staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*

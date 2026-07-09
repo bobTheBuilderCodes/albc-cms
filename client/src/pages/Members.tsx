@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
   CheckCircle,
   AlertCircle,
+  CalendarDays,
 } from "lucide-react";
 import { Pagination } from "../components/Pagination";
 import { createMember as apiCreateMember, deleteMember as apiDeleteMember, fetchMembers, updateMember as apiUpdateMember } from "../api/backend";
@@ -44,6 +45,125 @@ const getMemberDepartments = (member: Partial<Pick<Member, "department" | "depar
   return Array.from(new Set(list.map((dept) => String(dept || "").trim()).filter(Boolean)));
 };
 
+const csvEscape = (value: unknown): string => {
+  const text = String(value ?? "");
+  if (/["\n,;]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+};
+
+const formatDepartmentsForCsv = (member: Partial<Pick<Member, "department" | "departments">>): string => {
+  return getMemberDepartments(member).join(";");
+};
+
+const parseCsvText = (text: string): string[][] => {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      currentCell += '"';
+      i += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') {
+        i += 1;
+      }
+      currentRow.push(currentCell.trim());
+      currentCell = "";
+      if (currentRow.some((cell) => cell.length > 0)) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      continue;
+    }
+
+    if (char === ',' && !inQuotes) {
+      currentRow.push(currentCell.trim());
+      currentCell = "";
+      continue;
+    }
+
+    currentCell += char;
+  }
+
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some((cell) => cell.length > 0)) {
+      rows.push(currentRow);
+    }
+  }
+
+  return rows;
+};
+
+const TIME_ZONE = "Africa/Accra";
+
+const getAccraDateParts = (date: Date = new Date()): { year: number; month: number; day: number } => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .formatToParts(date)
+    .reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== "literal") acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+  return {
+    year: Number(parts.year || new Date().getFullYear()),
+    month: Number(parts.month || 1),
+    day: Number(parts.day || 1),
+  };
+};
+
+const formatBirthdayLabel = (date: Date): string => {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    month: "short",
+    day: "numeric",
+  }).format(date);
+};
+
+const normalizeBirthdayDate = (value: string): Date | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+};
+
+const getNextBirthdayOccurrence = (birthDate: Date, reference: Date = new Date()): Date | null => {
+  const current = getAccraDateParts(reference);
+  const birth = getAccraDateParts(birthDate);
+  if (!birth.month || !birth.day) return null;
+
+  let year = current.year;
+  const candidate = new Date(Date.UTC(year, birth.month - 1, birth.day));
+  const today = new Date(Date.UTC(current.year, current.month - 1, current.day));
+  if (candidate.getTime() < today.getTime()) {
+    year += 1;
+  }
+
+  const nextBirthday = new Date(Date.UTC(year, birth.month - 1, birth.day));
+  if (Number.isNaN(nextBirthday.getTime())) return null;
+  return nextBirthday;
+};
+
 export function Members() {
   const [members, setMembers] = useState<Member[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,6 +175,7 @@ export function Members() {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [birthdaySummaryOpen, setBirthdaySummaryOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const { user } = useAuth();
@@ -122,6 +243,50 @@ export function Members() {
     currentMembers.some((member) => selectedMemberIds.includes(member.id)) && !allCurrentPageSelected;
 
   const departments = Array.from(new Set(members.flatMap((m) => getMemberDepartments(m))));
+  const birthdaySummary = useMemo(() => {
+    const now = new Date();
+    const dueBirthdays = members
+      .map((member) => {
+        const birthDate = normalizeBirthdayDate(member.dateOfBirth);
+        if (!birthDate) return null;
+        const nextBirthday = getNextBirthdayOccurrence(birthDate, now);
+        if (!nextBirthday) return null;
+
+        const todayParts = getAccraDateParts(now);
+        const todayUtc = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day));
+        const diffDays = Math.round((nextBirthday.getTime() - todayUtc.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0 || diffDays > 13) return null;
+
+        return {
+          id: member.id,
+          name: member.fullName,
+          email: member.email,
+          phone: member.phoneNumber,
+          department: getMemberDepartments(member).join(", ") || "General",
+          birthday: formatBirthdayLabel(nextBirthday),
+          dateOfBirth: member.dateOfBirth,
+          window: diffDays < 7 ? "this" : "next",
+          daysUntil: diffDays,
+        };
+      })
+      .filter(Boolean) as Array<{
+      id: string;
+      name: string;
+      email: string;
+      phone: string;
+      department: string;
+      birthday: string;
+      dateOfBirth: string;
+      window: "this" | "next";
+      daysUntil: number;
+    }>;
+
+    return {
+      total: dueBirthdays.length,
+      thisWeek: dueBirthdays.filter((item) => item.window === "this"),
+      nextWeek: dueBirthdays.filter((item) => item.window === "next"),
+    };
+  }, [members]);
 
   const deleteMember = async (id: string) => {
     const confirmed = await confirm({
@@ -193,19 +358,34 @@ export function Members() {
       "Email",
       "Phone",
       "Department",
+      "Departments",
       "Status",
       "Join Date",
+      "Date of Birth",
+      "Gender",
+      "Marital Status",
+      "Address",
     ];
-    const rows = filteredMembers.map((m) => [
-      m.fullName,
-      m.email,
-      m.phoneNumber,
-      getMemberDepartments(m).join(" / "),
-      m.membershipStatus,
-      m.joinDate,
-    ]);
+    const rows = members.map((m) => {
+      const memberDepartments = getMemberDepartments(m);
+      return [
+        m.fullName,
+        m.email,
+        m.phoneNumber,
+        memberDepartments[0] || "",
+        formatDepartmentsForCsv(m),
+        m.membershipStatus,
+        m.joinDate,
+        m.dateOfBirth || "",
+        m.gender || "",
+        m.maritalStatus || "",
+        m.address || "",
+      ];
+    });
 
-    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map((row) => row.map(csvEscape).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -326,6 +506,31 @@ export function Members() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-50 text-primary-700">
+                <CalendarDays className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-neutral-900">
+                  {birthdaySummary.total} birthdays for this week and next week
+                </p>
+                <p className="text-xs text-neutral-500">
+                  Showing birthdays due in the next 14 days.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBirthdaySummaryOpen(true)}
+              className="self-start rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700 hover:bg-primary-100 transition-colors"
+            >
+              View
+            </button>
+          </div>
         </div>
       </div>
 
@@ -593,8 +798,9 @@ export function Members() {
       </div>
 
       {(showAddModal || editingMember) && (
-        <MemberModal
+      <MemberModal
           member={editingMember}
+          existingMembers={members}
           onClose={() => {
             setShowAddModal(false);
             setEditingMember(null);
@@ -642,8 +848,17 @@ export function Members() {
         />
       )}
 
+      {birthdaySummaryOpen && (
+        <BirthdaySummaryModal
+          thisWeek={birthdaySummary.thisWeek}
+          nextWeek={birthdaySummary.nextWeek}
+          onClose={() => setBirthdaySummaryOpen(false)}
+        />
+      )}
+
       {showBulkUploadModal && (
         <BulkUploadModal
+          existingMembers={members}
           onClose={() => setShowBulkUploadModal(false)}
           onImport={async (newMembers) => {
             try {
@@ -672,15 +887,129 @@ export function Members() {
   );
 }
 
+function BirthdaySummaryModal({
+  thisWeek,
+  nextWeek,
+  onClose,
+}: {
+  thisWeek: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    department: string;
+    birthday: string;
+    dateOfBirth: string;
+    window: "this" | "next";
+    daysUntil: number;
+  }>;
+  nextWeek: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    department: string;
+    birthday: string;
+    dateOfBirth: string;
+    window: "this" | "next";
+    daysUntil: number;
+  }>;
+  onClose: () => void;
+}) {
+  const total = thisWeek.length + nextWeek.length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+          <div>
+            <h3 className="text-lg font-semibold text-neutral-900">Birthday Summary</h3>
+            <p className="text-sm text-neutral-500">
+              {total} birthday{total === 1 ? "" : "s"} due in the next 14 days
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 p-5">
+          <BirthdaySummarySection title={`This week (${thisWeek.length})`} items={thisWeek} />
+          <BirthdaySummarySection title={`Next week (${nextWeek.length})`} items={nextWeek} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BirthdaySummarySection({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    department: string;
+    birthday: string;
+    dateOfBirth: string;
+    window: "this" | "next";
+    daysUntil: number;
+  }>;
+}) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h4 className="font-semibold text-neutral-900">{title}</h4>
+      </div>
+      {items.length > 0 ? (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-semibold text-neutral-900">{item.name}</p>
+                  <p className="text-sm text-neutral-500">{item.department}</p>
+                  <div className="mt-2 space-y-1 text-sm text-neutral-700">
+                    <p className="truncate">Email: {item.email || "N/A"}</p>
+                    <p>Phone: {item.phone || "N/A"}</p>
+                    <p>Birthday: {item.birthday}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700">
+                  {item.daysUntil === 0 ? "Today" : `${item.daysUntil} day${item.daysUntil === 1 ? "" : "s"}`}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-6 text-center">
+          <p className="text-sm font-medium text-neutral-700">No birthdays in this period.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MemberModal({
   member,
+  existingMembers,
   onClose,
   onSave,
 }: {
   member: Member | null;
+  existingMembers: Member[];
   onClose: () => void;
   onSave: (member: Member) => void;
 }) {
+  const toast = useToast();
   const [departments, setDepartments] = useState<string[]>([]);
   const initialDepartments = member?.departments?.length
     ? member.departments
@@ -725,6 +1054,30 @@ export function MemberModal({
     )
   );
 
+  const normalizeEmail = (email: string): string => String(email || "").trim().toLowerCase();
+  const normalizePhone = (phone: string): string => {
+    const cleaned = String(phone || "").trim().replace(/\s+/g, "");
+    if (!cleaned) return "";
+    const digits = cleaned.replace(/[^\d+]/g, "");
+    const withoutPlus = digits.startsWith("+") ? digits.slice(1) : digits;
+    if (withoutPlus.startsWith("0")) return `233${withoutPlus.slice(1)}`;
+    if (withoutPlus.startsWith("233")) return withoutPlus;
+    return withoutPlus;
+  };
+
+  const hasDuplicate = () => {
+    const currentEmail = normalizeEmail(String(formData.email || ""));
+    const currentPhone = normalizePhone(String(formData.phoneNumber || ""));
+    const currentId = member?.id;
+
+    return existingMembers.find((item) => {
+      if (item.id === currentId) return false;
+      const sameEmail = currentEmail && normalizeEmail(item.email || "") === currentEmail;
+      const samePhone = currentPhone && normalizePhone(item.phoneNumber || "") === currentPhone;
+      return sameEmail || samePhone;
+    });
+  };
+
   const toggleDepartment = (dept: string) => {
     setFormData((prev) => {
       const current = Array.from(
@@ -747,6 +1100,13 @@ export function MemberModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const duplicate = hasDuplicate();
+    if (duplicate) {
+      toast.error(
+        `Duplicate member detected. ${duplicate.fullName} already uses the same ${normalizeEmail(String(formData.email || "")) === normalizeEmail(duplicate.email || "") ? "email" : "phone number"}.`
+      );
+      return;
+    }
     onSave({
       ...formData,
       department: selectedDepartments[0] || "",
@@ -975,9 +1335,11 @@ export function MemberModal({
 }
 
 function BulkUploadModal({
+  existingMembers,
   onClose,
   onImport,
 }: {
+  existingMembers: Member[];
   onClose: () => void;
   onImport: (newMembers: Member[]) => void;
 }) {
@@ -985,6 +1347,14 @@ function BulkUploadModal({
   const [error, setError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<Partial<Member>[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
+
+  const normalizePhone = (phone: string): string =>
+    String(phone || "")
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/[^\d+]/g, "");
+  const normalizeEmail = (email: string): string => String(email || "").trim().toLowerCase();
 
   const downloadTemplate = () => {
     const headers = [
@@ -1054,9 +1424,7 @@ function BulkUploadModal({
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const rows = text
-          .split("\n")
-          .map((row) => row.split(",").map((cell) => cell.trim()));
+        const rows = parseCsvText(text);
 
         if (rows.length < 2) {
           setError("CSV file must contain at least one data row.");
@@ -1089,6 +1457,20 @@ function BulkUploadModal({
         }
 
         const parsedMembers: Partial<Member>[] = dataRows.map((row) => {
+          const departmentsColumn = headers.includes("Departments")
+            ? row[headers.indexOf("Departments")] || ""
+            : "";
+          const parsedDepartments = String(departmentsColumn || "")
+            .split(/[;|/]/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+          const primaryDepartment = row[headers.indexOf("Department")] || "";
+          const finalDepartments = parsedDepartments.length > 0
+            ? parsedDepartments
+            : primaryDepartment
+              ? [primaryDepartment]
+              : [];
+
           const member: Partial<Member> = {
             fullName: row[headers.indexOf("Full Name")] || "",
             email: row[headers.indexOf("Email")] || "",
@@ -1097,7 +1479,8 @@ function BulkUploadModal({
             gender: (row[headers.indexOf("Gender")] || "male") as any,
             maritalStatus: (row[headers.indexOf("Marital Status")] ||
               "single") as any,
-            department: row[headers.indexOf("Department")] || "",
+            department: finalDepartments[0] || "",
+            departments: finalDepartments,
             membershipStatus: (row[headers.indexOf("Status")] ||
               "active") as any,
             joinDate:
@@ -1109,12 +1492,53 @@ function BulkUploadModal({
           return member;
         });
 
+        const existingPhones = new Set(
+          existingMembers
+            .map((member) => normalizePhone(member.phoneNumber))
+            .filter(Boolean)
+        );
+        const existingEmails = new Set(
+          existingMembers
+            .map((member) => normalizeEmail(member.email))
+            .filter(Boolean)
+        );
+        const batchPhones = new Map<string, number>();
+        const batchEmails = new Map<string, number>();
+        const warnings = parsedMembers.flatMap((member, index) => {
+          const phone = normalizePhone(String(member.phoneNumber || ""));
+          const email = normalizeEmail(String(member.email || ""));
+          const messages: string[] = [];
+          if (phone) {
+            const nextCount = (batchPhones.get(phone) || 0) + 1;
+            batchPhones.set(phone, nextCount);
+            if (nextCount > 1) {
+              messages.push(`Row ${index + 2}: duplicate phone number in upload file (${phone}).`);
+            }
+            if (existingPhones.has(phone)) {
+              messages.push(`Row ${index + 2}: phone number already exists in your member list (${phone}).`);
+            }
+          }
+          if (email) {
+            const nextEmailCount = (batchEmails.get(email) || 0) + 1;
+            batchEmails.set(email, nextEmailCount);
+            if (nextEmailCount > 1) {
+              messages.push(`Row ${index + 2}: duplicate email in upload file (${email}).`);
+            }
+            if (existingEmails.has(email)) {
+              messages.push(`Row ${index + 2}: email already exists in your member list (${email}).`);
+            }
+          }
+          return messages;
+        });
+
         setPreviewData(parsedMembers);
+        setDuplicateWarnings(warnings);
         setShowPreview(true);
         setError(null);
       } catch (err) {
         setError("Error parsing CSV file. Please check the format.");
         setPreviewData([]);
+        setDuplicateWarnings([]);
         setShowPreview(false);
       }
     };
@@ -1124,6 +1548,11 @@ function BulkUploadModal({
 
   const handleImport = () => {
     if (previewData.length === 0) return;
+
+    if (duplicateWarnings.length > 0) {
+      setError("Please resolve duplicate phone numbers or emails before importing.");
+      return;
+    }
 
     const newMembers: Member[] = previewData.map(
       (member, index) =>
@@ -1155,7 +1584,7 @@ function BulkUploadModal({
 
         <div className="p-6 space-y-6">
           {/* Instructions */}
-          <div className="bg-info-50 border border-info-200 rounded-lg p-4">
+            <div className="bg-info-50 border border-info-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <FileSpreadsheet className="w-5 h-5 text-info-600 shrink-0 mt-0.5" />
               <div className="text-sm text-info-800">
@@ -1209,6 +1638,22 @@ function BulkUploadModal({
                   <p className="font-semibold mb-1">Error</p>
                   <p>{error}</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {duplicateWarnings.length > 0 && (
+            <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
+              <div className="text-sm text-warning-800">
+                <p className="font-semibold mb-2">Duplicate data found</p>
+                <p className="mb-2">
+                  Some rows share a phone number with another row in this upload or with an existing member. Please review them before importing.
+                </p>
+                <ul className="list-disc list-inside space-y-1">
+                  {duplicateWarnings.map((warning, index) => (
+                    <li key={`${warning}-${index}`}>{warning}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           )}

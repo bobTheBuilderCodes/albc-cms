@@ -2,7 +2,7 @@ import Member, { IMember } from "../modules/members/member.model";
 import Settings from "../modules/settings/settings.model";
 import User, { IUser } from "../modules/users/user.model";
 import BirthdayEmailLog from "../modules/notifications/birthday-email-log.model";
-import BirthdayBroadcastLog from "../modules/notifications/birthday-broadcast-log.model";
+import SmsLog from "../modules/sms/sms-log.model";
 import InAppNotification, {
   InAppNotificationType,
 } from "../modules/notifications/in-app-notification.model";
@@ -139,6 +139,19 @@ const applyBirthdayBroadcastTemplate = (template: string, name: string, churchNa
     .join(churchName);
 };
 
+const applyBirthdayBroadcastTemplateWithPhone = (
+  template: string,
+  name: string,
+  churchName: string,
+  phone: string
+): string => {
+  return applyBirthdayBroadcastTemplate(template, name, churchName)
+    .split("{{phone}}")
+    .join(phone)
+    .split("{{member_phone}}")
+    .join(phone);
+};
+
 const applyTemplate = (template: string, replacements: Record<string, string>): string => {
   return Object.entries(replacements).reduce((output, [key, value]) => {
     return output.split(`{{${key}}}`).join(value);
@@ -155,6 +168,49 @@ const normalizePhoneForArkesel = (phone: string): string => {
   return withoutPlus;
 };
 
+const isValidEmail = (value: string): boolean => {
+  const email = String(value || "").trim();
+  if (!email) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const uniqueEmails = (emails: string[]): string[] => {
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const email of emails) {
+    const normalized = String(email || "").trim().toLowerCase();
+    if (!normalized || seen.has(normalized) || !isValidEmail(normalized)) continue;
+    seen.add(normalized);
+    cleaned.push(normalized);
+  }
+  return cleaned;
+};
+
+const uniquePhones = (phones: string[]): string[] => {
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const phone of phones) {
+    const normalized = normalizePhoneForArkesel(String(phone || ""));
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    cleaned.push(normalized);
+  }
+  return cleaned;
+};
+
+const chunkArray = <T,>(items: T[], size: number): T[][] => {
+  const safeSize = Math.max(1, Math.trunc(size));
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += safeSize) {
+    chunks.push(items.slice(index, index + safeSize));
+  }
+  return chunks;
+};
+
+const sleep = async (ms: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 const getUserEmails = async (): Promise<string[]> => {
   const users = await User.find({ isActive: true }).select("email");
   return users.map((user) => String(user.email || "").trim()).filter(Boolean);
@@ -162,7 +218,93 @@ const getUserEmails = async (): Promise<string[]> => {
 
 const getMemberEmails = async (): Promise<string[]> => {
   const members = await Member.find({ email: { $exists: true, $ne: "" } }).select("email");
-  return members.map((member) => String(member.email || "").trim()).filter(Boolean);
+  return uniqueEmails(members.map((member) => String(member.email || "").trim()));
+};
+
+const getMemberPhones = async (): Promise<string[]> => {
+  const members = await Member.find({ phone: { $exists: true, $ne: "" } }).select("phone");
+  return uniquePhones(members.map((member) => String(member.phone || "").trim()));
+};
+
+const sendSmsInBatches = async (input: {
+  recipients: string[];
+  sender: string;
+  message: string;
+  apiKey: string;
+}): Promise<void> => {
+  const recipients = uniquePhones(input.recipients);
+  if (recipients.length === 0) return;
+
+  const sendBatch = async (batch: string[], size: number): Promise<void> => {
+    try {
+      await sendArkeselSMS({
+        apiKey: input.apiKey,
+        sender: input.sender,
+        message: input.message,
+        recipients: batch,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (batch.length > 1 && (message.includes("socket close") || message.includes("unexpected socket close") || message.includes("timeout"))) {
+        const smaller = chunkArray(batch, Math.max(1, Math.floor(size / 2)));
+        for (const part of smaller) {
+          await sendBatch(part, Math.max(1, Math.floor(size / 2)));
+          await sleep(200);
+        }
+        return;
+      }
+      throw error;
+    }
+  };
+
+  const batches = chunkArray(recipients, 50);
+  for (let index = 0; index < batches.length; index += 1) {
+    await sendBatch(batches[index], 50);
+    if (index < batches.length - 1) {
+      await sleep(250);
+    }
+  }
+};
+
+const sendBroadcastEmailInBatches = async (input: {
+  recipients: string[];
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<void> => {
+  const recipients = uniqueEmails(input.recipients);
+  if (recipients.length === 0) return;
+
+  const sendBatch = async (batch: string[], size: number): Promise<void> => {
+    try {
+      await emailService.send({
+        to: [],
+        bcc: batch,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (batch.length > 1 && (message.includes("socket close") || message.includes("unexpected socket close") || message.includes("timeout"))) {
+        const smaller = chunkArray(batch, Math.max(1, Math.floor(size / 2)));
+        for (const part of smaller) {
+          await sendBatch(part, Math.max(1, Math.floor(size / 2)));
+          await sleep(200);
+        }
+        return;
+      }
+      throw error;
+    }
+  };
+
+  const batches = chunkArray(recipients, 25);
+  for (let index = 0; index < batches.length; index += 1) {
+    await sendBatch(batches[index], 25);
+    if (index < batches.length - 1) {
+      await sleep(250);
+    }
+  }
 };
 
 const createInAppNotificationForUsers = async (input: {
@@ -201,7 +343,7 @@ const safeSend = async (task: () => Promise<void>, label: string): Promise<void>
 
 const getNotificationConfig = async () => {
   const settings = await Settings.findOne().select(
-    "churchName smsEnabled smsProvider smsApiKey smsSenderId enableBirthdayNotifications birthdayMessageTemplate birthdayCongregationMessageTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
+    "churchName smsEnabled smsProvider smsApiKey smsSenderId enableBirthdayNotifications birthdayMessageTemplate birthdayCongregationSmsTemplate birthdaySendDaysBefore birthdaySendTime enableProgramReminders enableMemberAddedNotifications enableDonationNotifications enableUserAddedNotifications programNotificationTemplate memberAddedNotificationTemplate donationNotificationTemplate userAddedNotificationTemplate"
   );
 
   return {
@@ -214,9 +356,9 @@ const getNotificationConfig = async () => {
     birthdayMessageTemplate:
       settings?.birthdayMessageTemplate ||
       "Happy Birthday {{name}}! May God's blessings overflow in your life today and always. - {{church_name}}",
-    birthdayCongregationMessageTemplate:
-      settings?.birthdayCongregationMessageTemplate ||
-      "Today is {{name}}'s birthday. Please join us in celebrating and wish them well. - {{church_name}}",
+    birthdayCongregationSmsTemplate:
+      settings?.birthdayCongregationSmsTemplate ||
+      "Please join us in wishing {{name}} a happy birthday today. You can call them on {{phone}}. - {{church_name}}",
     birthdaySendDaysBefore: Number(settings?.birthdaySendDaysBefore ?? 0),
     birthdaySendTime: settings?.birthdaySendTime || "08:00",
     program: settings?.enableProgramReminders ?? true,
@@ -489,12 +631,10 @@ export const notificationService = {
     }
 
     const allMemberEmails = await getMemberEmails();
+    const allMemberPhones = await getMemberPhones();
 
     for (const member of birthdayMembers) {
-      const [celebrantLog, broadcastLog] = await Promise.all([
-        BirthdayEmailLog.findOne({ memberId: member._id, dateKey: birthdayDateKey }),
-        BirthdayBroadcastLog.findOne({ memberId: member._id, dateKey: birthdayDateKey }),
-      ]);
+      const celebrantLog = await BirthdayEmailLog.findOne({ memberId: member._id, dateKey: birthdayDateKey });
 
       const fullName = memberDisplayName(member);
       const celebrantMessage = applyBirthdayTemplate(
@@ -502,75 +642,101 @@ export const notificationService = {
         fullName,
         config.churchName
       );
-      const congregationMessage = applyBirthdayBroadcastTemplate(
-        config.birthdayCongregationMessageTemplate,
+      const congregationSmsMessage = applyBirthdayBroadcastTemplateWithPhone(
+        config.birthdayCongregationSmsTemplate,
         fullName,
-        config.churchName
+        config.churchName,
+        String(member.phone || "").trim() || "N/A"
       );
       const celebrantEmail = String(member.email || "").trim();
       const others = celebrantEmail
         ? allMemberEmails.filter((email) => email.toLowerCase() !== celebrantEmail.toLowerCase())
         : allMemberEmails;
+      const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
+      const otherPhones = celebrantPhone
+        ? allMemberPhones.filter((phone) => phone !== celebrantPhone)
+        : allMemberPhones;
+      const broadcastSmsRecipientId = `birthday-broadcast-${member._id}-${birthdayDateKey}`;
 
-      if (!broadcastLog && others.length > 0) {
-        try {
-          await emailService.send({
-            to: others,
-            subject: `Wish ${fullName} a Happy Birthday`,
-            text: congregationMessage,
-            html: buildBrandedEmail({
-              churchName: config.churchName,
-              title: "Birthday Reminder",
-              message: congregationMessage,
-              previewText: `${fullName}'s birthday at ${config.churchName}`,
-            }),
-          });
+      const existingBroadcastSmsLog = await SmsLog.findOne({
+        recipientId: broadcastSmsRecipientId,
+        type: "birthday_broadcast",
+        status: "sent",
+      }).select("_id");
 
-          await Promise.all([
-            BirthdayBroadcastLog.create({ memberId: member._id, dateKey: birthdayDateKey }),
-            createSmsLog({
-              recipientId: `birthday-broadcast-${member._id}-${birthdayDateKey}`,
-              recipientName: "Birthday broadcast",
+      if (!existingBroadcastSmsLog) {
+        if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && otherPhones.length > 0) {
+          try {
+            const resolvedKey = await resolveArkeselApiKey({
+              configuredApiKey: config.smsApiKey,
+              fallbackApiKey: env.ARKESEL_API_KEY,
+            });
+
+            await sendSmsInBatches({
+              recipients: otherPhones,
+              sender: config.smsSenderId,
+              message: congregationSmsMessage,
+              apiKey: resolvedKey.apiKey,
+            });
+
+            await createSmsLog({
+              recipientId: broadcastSmsRecipientId,
+              recipientName: `Birthday broadcast for ${fullName}`,
               recipientPhone: "broadcast",
-              message: congregationMessage,
+              message: congregationSmsMessage,
               type: "birthday_broadcast",
               status: "sent",
               sentAt: new Date(),
               createdBy: "system",
-            }),
-          ]);
+            });
 
-          console.log("[Birthday] congregation broadcast sent", {
-            memberId: String(member._id),
-            member: fullName,
-            birthdayDateKey,
-          });
-        } catch (error) {
-          const failureReason = error instanceof Error ? error.message : "Birthday broadcast failed";
+            console.log("[Birthday] congregation SMS sent", {
+              memberId: String(member._id),
+              member: fullName,
+              birthdayDateKey,
+              smsRecipientCount: otherPhones.length,
+            });
+          } catch (error) {
+            const failureReason = error instanceof Error ? error.message : "Birthday broadcast SMS failed";
+            await createSmsLog({
+              recipientId: broadcastSmsRecipientId,
+              recipientName: `Birthday broadcast for ${fullName}`,
+              recipientPhone: "broadcast",
+              message: congregationSmsMessage,
+              type: "birthday_broadcast",
+              status: "failed",
+              failureReason,
+              createdBy: "system",
+            });
+            console.error("[Birthday] congregation SMS failed", {
+              memberId: String(member._id),
+              member: fullName,
+              birthdayDateKey,
+              failureReason,
+            });
+          }
+        } else {
+          const reason = !config.smsEnabled
+            ? "Skipped: SMS is disabled in settings"
+            : config.smsProvider !== "arkesel"
+            ? "Skipped: SMS provider is not Arkesel"
+            : !config.smsSenderId
+            ? "Skipped: SMS sender ID is not configured"
+            : "Skipped: no recipient phones on file";
+          console.warn(`Birthday congregation SMS skipped for "${fullName}": ${reason}`);
           await createSmsLog({
-            recipientId: `birthday-broadcast-${member._id}-${birthdayDateKey}`,
-            recipientName: "Birthday broadcast",
+            recipientId: broadcastSmsRecipientId,
+            recipientName: `Birthday broadcast for ${fullName}`,
             recipientPhone: "broadcast",
-            message: congregationMessage,
+            message: congregationSmsMessage,
             type: "birthday_broadcast",
-            status: "failed",
-            failureReason,
+            status: "skipped",
+            failureReason: reason,
             createdBy: "system",
           });
-          console.error("[Birthday] congregation broadcast failed", {
-            memberId: String(member._id),
-            member: fullName,
-            birthdayDateKey,
-            failureReason,
-          });
         }
-      } else if (broadcastLog) {
-        console.log("[Birthday] congregation broadcast skipped: already processed", {
-          memberId: String(member._id),
-          birthdayDateKey,
-        });
       } else {
-        console.log("[Birthday] congregation broadcast skipped: no recipients", {
+        console.log("[Birthday] congregation SMS skipped: already processed", {
           memberId: String(member._id),
           birthdayDateKey,
         });
@@ -601,7 +767,6 @@ export const notificationService = {
         });
       }
 
-      const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
       if (!celebrantLog && config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && celebrantPhone) {
         try {
           const resolvedKey = await resolveArkeselApiKey({

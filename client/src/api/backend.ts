@@ -1038,7 +1038,7 @@ type ApiSettings = {
   departments?: string[];
   enableBirthdayNotifications?: boolean;
   birthdayMessageTemplate?: string;
-  birthdayCongregationMessageTemplate?: string;
+  birthdayCongregationSmsTemplate?: string;
   birthdaySendDaysBefore?: number;
   birthdaySendTime?: string;
   enableProgramReminders?: boolean;
@@ -1067,7 +1067,7 @@ export type SettingsPayload = {
   departments?: string[];
   enableBirthdayNotifications?: boolean;
   birthdayMessageTemplate?: string;
-  birthdayCongregationMessageTemplate?: string;
+  birthdayCongregationSmsTemplate?: string;
   birthdaySendDaysBefore?: number;
   birthdaySendTime?: string;
   enableProgramReminders?: boolean;
@@ -1099,7 +1099,7 @@ export async function fetchSettings(): Promise<SettingsPayload | null> {
     departments: settings.departments || [],
     enableBirthdayNotifications: settings.enableBirthdayNotifications,
     birthdayMessageTemplate: settings.birthdayMessageTemplate,
-    birthdayCongregationMessageTemplate: settings.birthdayCongregationMessageTemplate,
+    birthdayCongregationSmsTemplate: settings.birthdayCongregationSmsTemplate,
     birthdaySendDaysBefore: settings.birthdaySendDaysBefore,
     birthdaySendTime: settings.birthdaySendTime,
     enableProgramReminders: settings.enableProgramReminders,
@@ -1127,7 +1127,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     departments: payload.departments,
     enableBirthdayNotifications: payload.enableBirthdayNotifications,
     birthdayMessageTemplate: payload.birthdayMessageTemplate,
-    birthdayCongregationMessageTemplate: payload.birthdayCongregationMessageTemplate,
+    birthdayCongregationSmsTemplate: payload.birthdayCongregationSmsTemplate,
     birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
     birthdaySendTime: payload.birthdaySendTime,
     enableProgramReminders: payload.enableProgramReminders,
@@ -1155,7 +1155,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       departments: payload.departments || [],
       enableBirthdayNotifications: payload.enableBirthdayNotifications,
       birthdayMessageTemplate: payload.birthdayMessageTemplate,
-      birthdayCongregationMessageTemplate: payload.birthdayCongregationMessageTemplate,
+      birthdayCongregationSmsTemplate: payload.birthdayCongregationSmsTemplate,
       birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
       birthdaySendTime: payload.birthdaySendTime,
       enableProgramReminders: payload.enableProgramReminders,
@@ -1184,7 +1184,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
       departments: res.data.data.departments || [],
       enableBirthdayNotifications: res.data.data.enableBirthdayNotifications,
       birthdayMessageTemplate: res.data.data.birthdayMessageTemplate,
-      birthdayCongregationMessageTemplate: res.data.data.birthdayCongregationMessageTemplate,
+      birthdayCongregationSmsTemplate: res.data.data.birthdayCongregationSmsTemplate,
       birthdaySendDaysBefore: res.data.data.birthdaySendDaysBefore,
       birthdaySendTime: res.data.data.birthdaySendTime,
       enableProgramReminders: res.data.data.enableProgramReminders,
@@ -1212,7 +1212,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     departments: payload.departments || [],
     enableBirthdayNotifications: payload.enableBirthdayNotifications,
     birthdayMessageTemplate: payload.birthdayMessageTemplate,
-    birthdayCongregationMessageTemplate: payload.birthdayCongregationMessageTemplate,
+    birthdayCongregationSmsTemplate: payload.birthdayCongregationSmsTemplate,
     birthdaySendDaysBefore: payload.birthdaySendDaysBefore,
     birthdaySendTime: payload.birthdaySendTime,
     enableProgramReminders: payload.enableProgramReminders,
@@ -1241,7 +1241,7 @@ export async function upsertSettings(payload: SettingsPayload): Promise<Settings
     departments: res.data.data.departments || [],
     enableBirthdayNotifications: res.data.data.enableBirthdayNotifications,
     birthdayMessageTemplate: res.data.data.birthdayMessageTemplate,
-    birthdayCongregationMessageTemplate: res.data.data.birthdayCongregationMessageTemplate,
+    birthdayCongregationSmsTemplate: res.data.data.birthdayCongregationSmsTemplate,
     birthdaySendDaysBefore: res.data.data.birthdaySendDaysBefore,
     birthdaySendTime: res.data.data.birthdaySendTime,
     enableProgramReminders: res.data.data.enableProgramReminders,
