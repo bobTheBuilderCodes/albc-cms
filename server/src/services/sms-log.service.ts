@@ -1,4 +1,5 @@
 import SmsLog, { ISmsLog, SmsLogStatus, SmsLogType } from "../modules/sms/sms-log.model";
+import { upsertSmsLogCache } from "./sms-log.cache";
 
 type CreateSmsLogInput = {
   recipientId: string;
@@ -14,7 +15,9 @@ type CreateSmsLogInput = {
 };
 
 export const createSmsLog = async (input: CreateSmsLogInput): Promise<ISmsLog> => {
-  return SmsLog.create(input);
+  const log = await SmsLog.create(input);
+  upsertSmsLogCache(log);
+  return log;
 };
 
 export const listSmsLogs = async (limit = 500): Promise<ISmsLog[]> => {

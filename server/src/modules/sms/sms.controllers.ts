@@ -5,7 +5,8 @@ import { HttpError } from "../../utils/httpError";
 import { ensureString } from "../../utils/validators";
 import { getArkeselBalance, resolveArkeselApiKey, sendArkeselSMS } from "../../services/arkesel.service";
 import { env } from "../../config/env";
-import { createSmsLog, listSmsLogs, mapSmsLog } from "../../services/sms-log.service";
+import { createSmsLog, mapSmsLog } from "../../services/sms-log.service";
+import { getCachedSmsLogs, refreshSmsLogCache } from "../../services/sms-log.cache";
 
 type RecipientInput = {
   memberId?: string;
@@ -273,7 +274,10 @@ export const sendSms = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getSmsLogs = asyncHandler(async (_req: Request, res: Response) => {
-  const logs = await listSmsLogs();
+  let logs = getCachedSmsLogs();
+  if (logs.length === 0) {
+    logs = await refreshSmsLogCache();
+  }
   res.json({
     success: true,
     data: logs.map(mapSmsLog),

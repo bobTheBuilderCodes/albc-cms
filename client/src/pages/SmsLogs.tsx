@@ -13,13 +13,25 @@ export function SmsLogs() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'sent' | 'failed' | 'pending' | 'skipped'>('all');
   const [filterDate, setFilterDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 12;
   const toast = useToast();
   const navigate = useNavigate();
   const { theme } = useTheme();
 
   useEffect(() => {
-    loadData().catch((e) => toast.error(e?.response?.data?.message || e?.message || 'Failed to load SMS logs'));
+    const load = async () => {
+      setLoading(true);
+      try {
+        await loadData();
+      } catch (e: any) {
+        toast.error(e?.response?.data?.message || e?.message || 'Failed to load SMS logs');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load().catch(() => undefined);
   }, []);
 
   const loadData = async () => {
@@ -54,6 +66,7 @@ export function SmsLogs() {
 
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const skeletonRows = Array.from({ length: 5 });
 
   const pageBg = theme === 'dark' ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-neutral-200';
   const textMain = theme === 'dark' ? 'text-slate-50' : 'text-neutral-900';
@@ -156,107 +169,165 @@ export function SmsLogs() {
         </div>
 
         <div className="p-4 sm:p-6">
-          <div className="md:hidden space-y-3">
-            {paginatedLogs.map((log) => (
-              <div key={log.id} className={`rounded-xl border p-4 ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-neutral-200'}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-neutral-900'} truncate`}>
-                      {log.recipientName}
-                    </p>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}`}>{log.recipientPhone}</p>
-                  </div>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs capitalize ${
-                    theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-neutral-100 text-neutral-700'
-                  }`}>
-                    {formatSmsType(log.type)}
-                  </span>
-                </div>
-
-                <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>{log.message}</p>
-
-                <div className="mt-3 space-y-1">
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${statusMeta(log.status).wrapper}`}>
-                    {statusMeta(log.status).icon}
-                    {statusMeta(log.status).label}
-                  </span>
-                  {log.failureReason && log.status !== 'sent' && (
-                    <div
-                      className={`flex items-start gap-1 text-xs ${
-                        log.status === 'skipped' ? 'text-amber-700' : 'text-danger-600'
-                      }`}
-                    >
-                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                      <span className="break-words">{log.failureReason}</span>
+          {loading ? (
+            <div className="space-y-3">
+              <div className="md:hidden space-y-3">
+                {skeletonRows.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`animate-pulse rounded-xl border p-4 ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-neutral-200'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className={`h-4 w-32 rounded ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
+                        <div className={`h-3 w-24 rounded ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
+                      </div>
+                      <div className={`h-6 w-20 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
                     </div>
-                  )}
-                </div>
-
-                <p className={`mt-3 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}`}>
-                  {new Date(log.sentAt || log.createdAt).toLocaleString()}
-                </p>
+                    <div className={`mt-4 h-4 w-full rounded ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
+                    <div className={`mt-2 h-4 w-5/6 rounded ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className={`h-6 w-24 rounded-full ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
+                      <div className={`h-3 w-20 rounded ${theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'}`} />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead className={`${theme === 'dark' ? 'bg-slate-950/80 border-b border-slate-800' : 'bg-neutral-50 border-b border-neutral-200'}`}>
-                <tr>
-                  <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Recipient</th>
-                  <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Message</th>
-                  <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Type</th>
-                  <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Status</th>
-                  <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Sent At</th>
-                </tr>
-              </thead>
-              <tbody className={theme === 'dark' ? 'divide-y divide-slate-800' : 'divide-y divide-neutral-200'}>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className={`${theme === 'dark' ? 'bg-slate-950/80 border-b border-slate-800' : 'bg-neutral-50 border-b border-neutral-200'}`}>
+                    <tr>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Recipient</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Message</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Type</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Status</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Sent At</th>
+                    </tr>
+                  </thead>
+                  <tbody className={theme === 'dark' ? 'divide-y divide-slate-800' : 'divide-y divide-neutral-200'}>
+                    {skeletonRows.map((_, rowIndex) => (
+                      <tr key={rowIndex} className={theme === 'dark' ? 'bg-slate-950' : 'bg-white'}>
+                        {Array.from({ length: 5 }).map((__, cellIndex) => (
+                          <td key={cellIndex} className="px-6 py-4">
+                            <div
+                              className={`h-4 rounded animate-pulse ${
+                                theme === 'dark' ? 'bg-slate-800' : 'bg-neutral-200'
+                              } ${cellIndex === 1 ? 'w-full' : 'w-32'}`}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="md:hidden space-y-3">
                 {paginatedLogs.map((log) => (
-                  <tr key={log.id} className={theme === 'dark' ? 'hover:bg-slate-900 transition-colors' : 'hover:bg-neutral-50 transition-colors'}>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-100' : 'text-neutral-900'}`}>{log.recipientName}</p>
+                  <div key={log.id} className={`rounded-xl border p-4 ${theme === 'dark' ? 'bg-slate-950 border-slate-800' : 'bg-white border-neutral-200'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-neutral-900'} truncate`}>
+                          {log.recipientName}
+                        </p>
                         <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}`}>{log.recipientPhone}</p>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className={`text-sm line-clamp-2 ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>{log.message}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs capitalize ${
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs capitalize ${
                         theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-neutral-100 text-neutral-700'
                       }`}>
                         {formatSmsType(log.type)}
                       </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${statusMeta(log.status).wrapper}`}>
-                          {statusMeta(log.status).icon}
-                          {statusMeta(log.status).label}
-                        </span>
-                        {log.failureReason && log.status !== 'sent' && (
-                          <div
-                            className={`flex items-start gap-1 text-xs ${
-                              log.status === 'skipped' ? 'text-amber-700' : 'text-danger-600'
-                            }`}
-                          >
-                            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                            <span className="break-words">{log.failureReason}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>
-                      {new Date(log.sentAt || log.createdAt).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
 
-          {filteredLogs.length === 0 && (
+                    <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>{log.message}</p>
+
+                    <div className="mt-3 space-y-1">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${statusMeta(log.status).wrapper}`}>
+                        {statusMeta(log.status).icon}
+                        {statusMeta(log.status).label}
+                      </span>
+                      {log.failureReason && log.status !== 'sent' && (
+                        <div
+                          className={`flex items-start gap-1 text-xs ${
+                            log.status === 'skipped' ? 'text-amber-700' : 'text-danger-600'
+                          }`}
+                        >
+                          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span className="break-words">{log.failureReason}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className={`mt-3 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}`}>
+                      {new Date(log.sentAt || log.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className={`${theme === 'dark' ? 'bg-slate-950/80 border-b border-slate-800' : 'bg-neutral-50 border-b border-neutral-200'}`}>
+                    <tr>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Recipient</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Message</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Type</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Status</th>
+                      <th className={`px-6 py-3 text-left text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>Sent At</th>
+                    </tr>
+                  </thead>
+                  <tbody className={theme === 'dark' ? 'divide-y divide-slate-800' : 'divide-y divide-neutral-200'}>
+                    {paginatedLogs.map((log) => (
+                      <tr key={log.id} className={theme === 'dark' ? 'hover:bg-slate-900 transition-colors' : 'hover:bg-neutral-50 transition-colors'}>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-100' : 'text-neutral-900'}`}>{log.recipientName}</p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}`}>{log.recipientPhone}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className={`text-sm line-clamp-2 ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>{log.message}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs capitalize ${
+                            theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-neutral-100 text-neutral-700'
+                          }`}>
+                            {formatSmsType(log.type)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs ${statusMeta(log.status).wrapper}`}>
+                              {statusMeta(log.status).icon}
+                              {statusMeta(log.status).label}
+                            </span>
+                            {log.failureReason && log.status !== 'sent' && (
+                              <div
+                                className={`flex items-start gap-1 text-xs ${
+                                  log.status === 'skipped' ? 'text-amber-700' : 'text-danger-600'
+                                }`}
+                              >
+                                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                                <span className="break-words">{log.failureReason}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>
+                          {new Date(log.sentAt || log.createdAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {!loading && filteredLogs.length === 0 && (
             <div className="py-12 text-center">
               <MessageSquare className={`mx-auto mb-4 h-12 w-12 ${theme === 'dark' ? 'text-slate-500' : 'text-neutral-300'}`} />
               <p className={theme === 'dark' ? 'text-slate-400' : 'text-neutral-500'}>
