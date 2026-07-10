@@ -233,7 +233,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto p-4 border-t border-transparent">
+      <div className={`mt-auto border-t border-transparent ${isCollapsed ? 'p-2' : 'p-4'}`}>
         {!isStandalone && (
           <button
             onClick={() => {
@@ -247,7 +247,9 @@ export function Sidebar() {
               }
             }}
             disabled={!installPrompt && !isIosSafari}
-            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm transition-colors ${
+            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl font-semibold shadow-sm transition-colors ${
+              isCollapsed ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'
+            } ${
               installPrompt
                 ? theme === 'dark'
                   ? 'bg-sky-500 text-white hover:bg-sky-400'
@@ -265,11 +267,13 @@ export function Sidebar() {
                 ? 'Install the app on your device'
                 : isIosSafari
                   ? 'Install on iPhone'
-                  : 'Installation is not available in this browser'
+                  : 'This browser does not support direct PWA install. Use Chrome or Edge.'
             }
           >
             <Download className="w-4 h-4" />
-            <span>{installPrompt ? 'Install app' : isIosSafari ? 'Install on iPhone' : 'Install unavailable'}</span>
+            {!isCollapsed && (
+              <span>{installPrompt ? 'Install app' : isIosSafari ? 'Install on iPhone' : 'Install app'}</span>
+            )}
           </button>
         )}
 
@@ -277,7 +281,9 @@ export function Sidebar() {
           <button
             onClick={handleUpdate}
             disabled={!updateAvailable}
-            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm transition-colors ${
+            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl font-semibold shadow-sm transition-colors ${
+              isCollapsed ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm'
+            } ${
               updateAvailable
                 ? 'bg-amber-400 text-slate-900 hover:bg-amber-300'
                 : theme === 'dark'
@@ -287,12 +293,12 @@ export function Sidebar() {
             title={updateAvailable ? 'Update the installed app' : 'The app is up to date'}
           >
             <RefreshCcw className="w-4 h-4" />
-            <span>{updateAvailable ? 'Update app' : 'App installed'}</span>
+            {!isCollapsed && <span>{updateAvailable ? 'Update app' : 'App installed'}</span>}
           </button>
         )}
 
         {!isStandalone && showIosHint && isIosSafari && (
-          <div className={`mt-3 rounded-xl px-4 py-3 text-xs leading-5 shadow-sm ${
+          <div className={`mt-3 rounded-xl ${isCollapsed ? 'px-3 py-2' : 'px-4 py-3'} text-xs leading-5 shadow-sm ${
             theme === 'dark' ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-700 border border-sky-200'
           }`}>
             Tap <span className="font-semibold">Share</span>, then choose{" "}
