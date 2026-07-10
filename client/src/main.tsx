@@ -11,6 +11,7 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (refreshing) return;
     refreshing = true;
+    emitToast("success", "App updated successfully.");
     window.location.reload();
   });
 }
