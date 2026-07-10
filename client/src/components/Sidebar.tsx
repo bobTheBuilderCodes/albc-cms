@@ -7,6 +7,8 @@ import {
   FileText,
   Settings,
   Bot,
+  Download,
+  RefreshCcw,
   ChevronLeft,
   ChevronRight,
   X,
@@ -31,6 +33,15 @@ export function Sidebar() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [churchName, setChurchName] = useState('ChurchCMS');
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [showIosHint, setShowIosHint] = useState(false);
+  const isIosSafari =
+    /iphone|ipad|ipod/i.test(window.navigator.userAgent) &&
+    /safari/i.test(window.navigator.userAgent) &&
+    !/crios|fxios|edgios|opr|opera|android/i.test(window.navigator.userAgent);
   const visibleNavItems = navItems.filter((item) => !item.module || user?.modules.includes(item.module as ModulePermission));
 
   useEffect(() => {
@@ -62,6 +73,72 @@ export function Sidebar() {
     window.addEventListener('church-settings-updated', onSettingsChanged);
     return () => window.removeEventListener('church-settings-updated', onSettingsChanged);
   }, []);
+
+  useEffect(() => {
+    const updateStandalone = () => {
+      const standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      setIsStandalone(standalone);
+    };
+
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const handleUpdateAvailable = () => setUpdateAvailable(true);
+
+    updateStandalone();
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    window.addEventListener('appinstalled', updateStandalone);
+    window.addEventListener('pwa-update-available', handleUpdateAvailable);
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', updateStandalone);
+
+    navigator.serviceWorker?.getRegistration?.().then((registration) => {
+      if (registration) {
+        setServiceWorkerRegistration(registration);
+        if (registration.waiting) {
+          setUpdateAvailable(true);
+        }
+      }
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+      window.removeEventListener('appinstalled', updateStandalone);
+      window.removeEventListener('pwa-update-available', handleUpdateAvailable);
+      window.matchMedia('(display-mode: standalone)').removeEventListener('change', updateStandalone);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome !== 'dismissed') {
+      setInstallPrompt(null);
+    }
+  };
+
+  const handleUpdate = async () => {
+    const registration = serviceWorkerRegistration || (await navigator.serviceWorker?.getRegistration?.());
+    if (!registration) return;
+
+    await registration.update().catch(() => undefined);
+
+    if (registration.waiting) {
+      const waitingWorker = registration.waiting;
+      const onStateChange = () => {
+        if (waitingWorker.state === 'activated') {
+          window.location.reload();
+        }
+      };
+
+      waitingWorker.addEventListener('statechange', onStateChange);
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+  };
 
   return (
     <aside
@@ -156,7 +233,73 @@ export function Sidebar() {
         ))}
       </nav>
 
-      
+      <div className="mt-auto p-4 border-t border-transparent">
+        {!isStandalone && (
+          <button
+            onClick={() => {
+              if (installPrompt) {
+                handleInstall();
+                return;
+              }
+              if (isIosSafari) {
+                setShowIosHint((prev) => !prev);
+                return;
+              }
+            }}
+            disabled={!installPrompt && !isIosSafari}
+            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm transition-colors ${
+              installPrompt
+                ? theme === 'dark'
+                  ? 'bg-sky-500 text-white hover:bg-sky-400'
+                  : 'bg-sky-600 text-white hover:bg-sky-700'
+                : isIosSafari
+                  ? theme === 'dark'
+                    ? 'bg-slate-800 text-sky-100 hover:bg-slate-700'
+                    : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+                  : theme === 'dark'
+                    ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
+                    : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+            }`}
+            title={
+              installPrompt
+                ? 'Install the app on your device'
+                : isIosSafari
+                  ? 'Install on iPhone'
+                  : 'Installation is not available in this browser'
+            }
+          >
+            <Download className="w-4 h-4" />
+            <span>{installPrompt ? 'Install app' : isIosSafari ? 'Install on iPhone' : 'Install unavailable'}</span>
+          </button>
+        )}
+
+        {isStandalone && (
+          <button
+            onClick={handleUpdate}
+            disabled={!updateAvailable}
+            className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm transition-colors ${
+              updateAvailable
+                ? 'bg-amber-400 text-slate-900 hover:bg-amber-300'
+                : theme === 'dark'
+                  ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
+                  : 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+            }`}
+            title={updateAvailable ? 'Update the installed app' : 'The app is up to date'}
+          >
+            <RefreshCcw className="w-4 h-4" />
+            <span>{updateAvailable ? 'Update app' : 'App installed'}</span>
+          </button>
+        )}
+
+        {!isStandalone && showIosHint && isIosSafari && (
+          <div className={`mt-3 rounded-xl px-4 py-3 text-xs leading-5 shadow-sm ${
+            theme === 'dark' ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-700 border border-sky-200'
+          }`}>
+            Tap <span className="font-semibold">Share</span>, then choose{" "}
+            <span className="font-semibold">Add to Home Screen</span>.
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
