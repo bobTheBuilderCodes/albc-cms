@@ -64,6 +64,11 @@ const describeCondition = (automation: Automation): string => {
   if (automation.conditionType === "monthly") {
     return `Every month on day ${automation.dayOfMonth || 1} at ${automation.sendTime || "--:--"}`;
   }
+  if (automation.conditionType === "one_time") {
+    return automation.oneTimeDate
+      ? `One time on ${formatOneTimeDateLabel(automation.oneTimeDate)} at ${automation.sendTime || "--:--"}`
+      : `One time at ${automation.sendTime || "--:--"}`;
+  }
   return automation.customRule
     ? `${automation.customRule}${automation.sendTime ? ` at ${automation.sendTime}` : ""}`
     : "Custom schedule";
@@ -106,6 +111,17 @@ const buildDateAtTime = (baseDate: Date, hour: number, minute: number): Date => 
   const date = new Date(baseDate);
   date.setUTCHours(hour, minute, 0, 0);
   return date;
+};
+
+const formatOneTimeDateLabel = (value?: string): string => {
+  if (!value) return "Unset date";
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return value;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0));
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIME_ZONE,
+    dateStyle: "medium",
+  }).format(date);
 };
 
 const getNextWeeklyRunAt = (automation: Automation): Date | null => {
@@ -197,6 +213,14 @@ const getNextCustomRunAt = (automation: Automation): Date | null => {
 };
 
 const getNextRunAt = (automation: Automation): Date | null => {
+  if (automation.conditionType === "one_time") {
+    if (automation.lastRunAt) return null;
+    if (!automation.oneTimeDate) return null;
+    const match = automation.oneTimeDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const { hour, minute } = parseTime(automation.sendTime || "08:00");
+    return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour, minute, 0, 0));
+  }
   if (automation.conditionType === "weekly") return getNextWeeklyRunAt(automation);
   if (automation.conditionType === "monthly") return getNextMonthlyRunAt(automation);
   if (automation.conditionType === "custom") return getNextCustomRunAt(automation);
@@ -388,6 +412,7 @@ export function Automation() {
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
             <option value="custom">Custom</option>
+            <option value="one_time">One time</option>
           </select>
         </div>
       </div>
@@ -603,6 +628,7 @@ export function AutomationNew() {
     dayOfWeek: ["Sunday"] as string[],
     dayOfMonth: 1,
     customRule: "",
+    oneTimeDate: "",
     sendTime: "08:00",
     isActive: true,
   });
@@ -654,6 +680,7 @@ export function AutomationNew() {
           dayOfWeek: Array.isArray(existing.dayOfWeek) && existing.dayOfWeek.length > 0 ? existing.dayOfWeek : ["Sunday"],
           dayOfMonth: existing.dayOfMonth || 1,
           customRule: existing.customRule || "",
+          oneTimeDate: existing.oneTimeDate || "",
           sendTime: existing.sendTime || "08:00",
           isActive: existing.isActive !== false,
         });
@@ -733,6 +760,11 @@ export function AutomationNew() {
       return;
     }
 
+    if (form.conditionType === "one_time" && !form.oneTimeDate.trim()) {
+      toast.error("Please select a one-time date");
+      return;
+    }
+
     const selectedTemplate = templates.find((template) => template.id === form.templateId);
     const templateContent = selectedTemplate?.content || form.templateContent || "";
     const templateName = selectedTemplate?.name || form.templateName || "Saved template";
@@ -743,12 +775,14 @@ export function AutomationNew() {
 
     const scheduleLabel =
       form.conditionType === "weekly"
-        ? `Every week on ${form.dayOfWeek.join(", ")} at ${form.sendTime}`
-        : form.conditionType === "monthly"
-        ? `Every month on day ${form.dayOfMonth} at ${form.sendTime}`
-        : form.customRule.trim()
-        ? `${form.customRule.trim()}${form.sendTime ? ` at ${form.sendTime}` : ""}`
-        : `Custom schedule at ${form.sendTime}`;
+      ? `Every week on ${form.dayOfWeek.join(", ")} at ${form.sendTime}`
+      : form.conditionType === "monthly"
+      ? `Every month on day ${form.dayOfMonth} at ${form.sendTime}`
+      : form.conditionType === "one_time"
+      ? `One time on ${formatOneTimeDateLabel(form.oneTimeDate)} at ${form.sendTime}`
+      : form.customRule.trim()
+      ? `${form.customRule.trim()}${form.sendTime ? ` at ${form.sendTime}` : ""}`
+      : `Custom schedule at ${form.sendTime}`;
 
     const payload: Omit<Automation, "id" | "createdAt" | "updatedAt"> = {
       name: form.name.trim(),
@@ -763,6 +797,7 @@ export function AutomationNew() {
       dayOfWeek: form.conditionType === "weekly" ? form.dayOfWeek : undefined,
       dayOfMonth: form.conditionType === "monthly" ? form.dayOfMonth : undefined,
       customRule: form.conditionType === "custom" ? form.customRule.trim() : undefined,
+      oneTimeDate: form.conditionType === "one_time" ? form.oneTimeDate.trim() : undefined,
       sendTime: form.sendTime,
       isActive: form.isActive,
     };
@@ -887,6 +922,7 @@ export function AutomationNew() {
                 <option value="weekly">Every week</option>
                 <option value="monthly">Every month</option>
                 <option value="custom">Custom</option>
+                <option value="one_time">One time</option>
               </select>
             </div>
 
@@ -959,7 +995,21 @@ export function AutomationNew() {
                       onChange={(e) => setForm((prev) => ({ ...prev, customRule: e.target.value }))}
                       placeholder="e.g. Every 2 weeks on Monday"
                       className={inputClass}
+                      />
+                  </div>
+                )}
+
+                {form.conditionType === "one_time" && (
+                  <div className="md:col-span-2">
+                    <label className={`mb-2 block text-sm ${sectionTextClass}`}>One-time date</label>
+                    <input
+                      type="date"
+                      value={form.oneTimeDate}
+                      onChange={(e) => setForm((prev) => ({ ...prev, oneTimeDate: e.target.value }))}
+                      className={inputClass}
+                      required
                     />
+                    <p className={`mt-2 text-xs ${mutedTextClass}`}>The automation will run once on this date at the selected time.</p>
                   </div>
                 )}
 
@@ -1100,6 +1150,8 @@ export function AutomationNew() {
                   ? `Every week on ${form.dayOfWeek.join(", ")} at ${form.sendTime}`
                   : form.conditionType === "monthly"
                   ? `Every month on day ${form.dayOfMonth} at ${form.sendTime}`
+                  : form.conditionType === "one_time"
+                  ? `One time on ${formatOneTimeDateLabel(form.oneTimeDate)} at ${form.sendTime}`
                   : form.customRule.trim()
                   ? `${form.customRule.trim()}${form.sendTime ? ` at ${form.sendTime}` : ""}`
                   : `Custom schedule at ${form.sendTime}`}

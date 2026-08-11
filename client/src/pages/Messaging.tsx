@@ -134,6 +134,7 @@ export function Messaging() {
           departments={departments}
           templates={templates}
           toast={toast}
+          theme={theme}
           onSend={async (newLogs) => {
             const existingLogs: SMSLog[] = JSON.parse(localStorage.getItem('cms_sms_logs') || '[]');
             const updated = [...existingLogs, ...newLogs];
@@ -175,6 +176,7 @@ function SendMessageTab({
   departments,
   templates,
   toast,
+  theme,
   onSend,
   smsBalance,
   mainBalance,
@@ -184,6 +186,7 @@ function SendMessageTab({
   departments: string[];
   templates: SMSTemplate[];
   toast: { success: (message: string) => void; error: (message: string) => void; info: (message: string) => void };
+  theme: 'dark' | 'light';
   onSend: (logs: SMSLog[]) => Promise<void> | void;
   smsBalance: string | number | null;
   mainBalance: string | number | null;
@@ -308,6 +311,18 @@ function SendMessageTab({
       return searchable.includes(query);
     })
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const allFilteredMembersSelected =
+    filteredMembers.length > 0 && filteredMembers.every((member) => selectedMemberIds.includes(member.id));
+
+  const toggleAllFilteredMembers = (checked: boolean) => {
+    const filteredIds = new Set(filteredMembers.map((member) => member.id));
+    setSelectedMemberIds((prev) => {
+      if (checked) {
+        return Array.from(new Set([...prev, ...filteredMembers.map((member) => member.id)]));
+      }
+      return prev.filter((id) => !filteredIds.has(id));
+    });
+  };
 
   return (
     <div className="w-full p-4 sm:p-6">
@@ -404,6 +419,32 @@ function SendMessageTab({
                 <p className="text-xs text-neutral-500">Search and select exact people</p>
                 {audience === 'members' && (
                   <div className="mt-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-950 text-slate-200'
+                          : 'border-neutral-200 bg-neutral-50 text-neutral-800'
+                      }`}
+                    >
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allFilteredMembersSelected}
+                          onChange={(e) => toggleAllFilteredMembers(e.target.checked)}
+                          className="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className={theme === 'dark' ? 'text-slate-200' : 'text-neutral-800'}>Select all filtered members</span>
+                      </label>
+                      {selectedMemberIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMemberIds([])}
+                          className={`text-xs font-medium ${theme === 'dark' ? 'text-primary-300 hover:text-primary-200' : 'text-primary-600 hover:text-primary-700'}`}
+                        >
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={memberSearch}

@@ -35,6 +35,7 @@ const sanitizeAutomationRule = (automation: any) => {
       : [],
     dayOfMonth: automation.dayOfMonth === undefined ? undefined : Number(automation.dayOfMonth),
     customRule: String(automation.customRule || "").trim() || undefined,
+    oneTimeDate: String(automation.oneTimeDate || "").trim() || undefined,
     sendTime: String(automation.sendTime || "08:00").trim() || "08:00",
     isActive: automation.isActive === undefined ? true : Boolean(automation.isActive),
     lastRunAt: automation.lastRunAt ? new Date(automation.lastRunAt) : undefined,

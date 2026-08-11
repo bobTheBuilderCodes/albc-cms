@@ -28,6 +28,7 @@ const mapAutomation = (automation: any) => ({
   dayOfWeek: automation.dayOfWeek || [],
   dayOfMonth: automation.dayOfMonth,
   customRule: automation.customRule,
+  oneTimeDate: automation.oneTimeDate,
   sendTime: automation.sendTime,
   isActive: automation.isActive,
   lastRunAt: automation.lastRunAt?.toISOString?.() || null,
@@ -59,6 +60,7 @@ export const createAutomation = asyncHandler(async (req: Request, res: Response)
     dayOfWeek: normalizeArray(req.body.dayOfWeek),
     dayOfMonth: req.body.dayOfMonth === undefined ? undefined : Number(req.body.dayOfMonth),
     customRule: String(req.body.customRule || "").trim() || undefined,
+    oneTimeDate: String(req.body.oneTimeDate || "").trim() || undefined,
     sendTime: String(req.body.sendTime || "08:00").trim() || "08:00",
     isActive: req.body.isActive === undefined ? true : Boolean(req.body.isActive),
     createdBy: req.user?.id,
@@ -81,6 +83,7 @@ export const updateAutomation = asyncHandler(async (req: Request, res: Response)
   if (req.body.dayOfWeek !== undefined) updates.dayOfWeek = normalizeArray(req.body.dayOfWeek);
   if (req.body.dayOfMonth !== undefined) updates.dayOfMonth = Number(req.body.dayOfMonth);
   if (req.body.customRule !== undefined) updates.customRule = String(req.body.customRule || "").trim() || undefined;
+  if (req.body.oneTimeDate !== undefined) updates.oneTimeDate = String(req.body.oneTimeDate || "").trim() || undefined;
   if (req.body.sendTime !== undefined) updates.sendTime = String(req.body.sendTime || "08:00").trim() || "08:00";
   if (req.body.isActive !== undefined) updates.isActive = Boolean(req.body.isActive);
   if (req.body.lastRunAt !== undefined) updates.lastRunAt = req.body.lastRunAt ? new Date(req.body.lastRunAt) : undefined;

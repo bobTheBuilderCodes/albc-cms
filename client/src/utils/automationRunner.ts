@@ -27,6 +27,7 @@ const getScheduleKey = (automation: Automation, now: Date): string => {
     automation.dayOfMonth || "",
     days,
     automation.customRule || "",
+    automation.oneTimeDate || "",
     now.toISOString().slice(0, 10),
   ].join("|");
 };
@@ -38,6 +39,17 @@ const isDueNow = (automation: Automation, now: Date): boolean => {
   const currentDay = WEEK_DAYS[now.getDay()];
   const currentDate = now.getDate();
   const rule = String(automation.customRule || "").trim().toLowerCase();
+
+  if (automation.conditionType === "one_time") {
+    if (!automation.oneTimeDate) return false;
+    const match = automation.oneTimeDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return false;
+    return (
+      now.getFullYear() === Number(match[1]) &&
+      now.getMonth() + 1 === Number(match[2]) &&
+      now.getDate() === Number(match[3])
+    );
+  }
 
   if (automation.conditionType === "weekly") {
     return (automation.dayOfWeek || []).includes(currentDay);

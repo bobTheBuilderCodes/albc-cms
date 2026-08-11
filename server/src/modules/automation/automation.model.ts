@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type AutomationConditionType = "weekly" | "monthly" | "custom";
+export type AutomationConditionType = "weekly" | "monthly" | "custom" | "one_time";
 export type AutomationAudienceType = "all" | "department" | "manual";
 
 export interface IAutomation extends Document {
@@ -16,6 +16,7 @@ export interface IAutomation extends Document {
   dayOfWeek?: string[];
   dayOfMonth?: number;
   customRule?: string;
+  oneTimeDate?: string;
   sendTime?: string;
   isActive: boolean;
   lastRunAt?: Date;
@@ -33,7 +34,7 @@ const automationSchema = new Schema<IAutomation>(
     templateContent: { type: String, required: true, trim: true },
     conditionType: {
       type: String,
-      enum: ["weekly", "monthly", "custom"],
+      enum: ["weekly", "monthly", "custom", "one_time"],
       required: true,
     },
     audienceType: {
@@ -47,6 +48,7 @@ const automationSchema = new Schema<IAutomation>(
     dayOfWeek: [{ type: String, trim: true }],
     dayOfMonth: { type: Number },
     customRule: { type: String, trim: true },
+    oneTimeDate: { type: String, trim: true },
     sendTime: { type: String, trim: true, default: "08:00" },
     isActive: { type: Boolean, default: true },
     lastRunAt: { type: Date },
@@ -61,6 +63,9 @@ automationSchema.pre("save", function () {
   automation.dayOfWeek = Array.isArray(automation.dayOfWeek)
     ? Array.from(new Set(automation.dayOfWeek.map((day) => String(day || "").trim()).filter(Boolean)))
     : [];
+  if (automation.oneTimeDate) {
+    automation.oneTimeDate = String(automation.oneTimeDate || "").trim();
+  }
 });
 
 export default mongoose.model<IAutomation>("Automation", automationSchema);

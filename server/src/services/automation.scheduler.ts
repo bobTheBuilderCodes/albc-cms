@@ -16,7 +16,7 @@ type AutomationRule = {
   templateId: string;
   templateName: string;
   templateContent: string;
-  conditionType: "weekly" | "monthly" | "custom";
+  conditionType: "weekly" | "monthly" | "custom" | "one_time";
   audienceType: "all" | "department" | "manual";
   audienceDepartment?: string;
   manualNumbers?: string;
@@ -24,6 +24,7 @@ type AutomationRule = {
   dayOfWeek?: string[];
   dayOfMonth?: number;
   customRule?: string;
+  oneTimeDate?: string;
   sendTime?: string;
   isActive: boolean;
   lastRunAt?: Date;
@@ -93,6 +94,7 @@ const mapAutomationRule = (automation: any): AutomationRule | null => {
       : [],
     dayOfMonth: automation.dayOfMonth === undefined ? undefined : Number(automation.dayOfMonth),
     customRule: String(automation.customRule || "").trim() || undefined,
+    oneTimeDate: String(automation.oneTimeDate || "").trim() || undefined,
     sendTime: String(automation.sendTime || "08:00").trim() || "08:00",
     isActive: automation.isActive === undefined ? true : Boolean(automation.isActive),
     lastRunAt: automation.lastRunAt ? new Date(automation.lastRunAt) : undefined,
@@ -114,6 +116,18 @@ const buildDateAtTime = (baseDate: Date, hour: number, minute: number): Date => 
   const date = new Date(baseDate);
   date.setUTCHours(hour, minute, 0, 0);
   return date;
+};
+
+const getOneTimeRunAt = (automation: AutomationRule): Date | null => {
+  const oneTimeDate = String(automation.oneTimeDate || "").trim();
+  if (!oneTimeDate) return null;
+
+  const match = oneTimeDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const { hour, minute } = parseTime(automation.sendTime || "08:00");
+  const scheduled = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), hour, minute, 0, 0));
+  return Number.isNaN(scheduled.getTime()) ? null : scheduled;
 };
 
 const getNextWeeklyRunAt = (automation: AutomationRule, now: Date): Date | null => {
@@ -202,6 +216,7 @@ const getNextCustomRunAt = (automation: AutomationRule, now: Date): Date | null 
 };
 
 const getNextRunAt = (automation: AutomationRule, now: Date): Date | null => {
+  if (automation.conditionType === "one_time") return getOneTimeRunAt(automation);
   if (automation.conditionType === "weekly") return getNextWeeklyRunAt(automation, now);
   if (automation.conditionType === "monthly") return getNextMonthlyRunAt(automation, now);
   if (automation.conditionType === "custom") return getNextCustomRunAt(automation, now);
@@ -311,6 +326,9 @@ const runDueAutomation = async (automation: AutomationRule, churchName: string, 
 
   automation.lastRunAt = now;
   automation.lastRunKey = scheduleKey;
+  if (automation.conditionType === "one_time") {
+    automation.isActive = false;
+  }
   automation.updatedAt = now;
   console.log(
     `[Automation] sent "${automation.name}" (occurrence: ${nextRunAt.toISOString()}, ${acceptedCount}/${recipients.length} accepted)`
@@ -385,6 +403,7 @@ export const runDueAutomations = async (): Promise<void> => {
         {
           lastRunAt: automation.lastRunAt,
           lastRunKey: automation.lastRunKey,
+          isActive: automation.isActive,
           updatedAt: new Date(),
         },
         { new: false }

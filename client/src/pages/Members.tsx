@@ -281,10 +281,15 @@ export function Members() {
       daysUntil: number;
     }>;
 
+    const orderedBirthdays = dueBirthdays.sort((a, b) => {
+      if (a.daysUntil !== b.daysUntil) return a.daysUntil - b.daysUntil;
+      return a.name.localeCompare(b.name);
+    });
+
     return {
-      total: dueBirthdays.length,
-      thisWeek: dueBirthdays.filter((item) => item.window === "this"),
-      nextWeek: dueBirthdays.filter((item) => item.window === "next"),
+      total: orderedBirthdays.length,
+      thisWeek: orderedBirthdays.filter((item) => item.window === "this"),
+      nextWeek: orderedBirthdays.filter((item) => item.window === "next"),
     };
   }, [members]);
 

@@ -152,6 +152,22 @@ const applyBirthdayBroadcastTemplateWithPhone = (
     .join(phone);
 };
 
+const formatReadableList = (items: string[]): string => {
+  const cleaned = items.map((item) => String(item || "").trim()).filter(Boolean);
+  if (cleaned.length === 0) return "";
+  if (cleaned.length === 1) return cleaned[0];
+  if (cleaned.length === 2) return `${cleaned[0]} and ${cleaned[1]}`;
+  return `${cleaned.slice(0, -1).join(", ")} and ${cleaned[cleaned.length - 1]}`;
+};
+
+const getBirthdaySmsRecipientId = (memberId: string, dateKey: string): string => {
+  return `birthday-sms-${memberId}-${dateKey}`;
+};
+
+const getBirthdayBroadcastRecipientId = (dateKey: string, recipientPhone: string): string => {
+  return `birthday-broadcast-${dateKey}-${recipientPhone}`;
+};
+
 const applyTemplate = (template: string, replacements: Record<string, string>): string => {
   return Object.entries(replacements).reduce((output, [key, value]) => {
     return output.split(`{{${key}}}`).join(value);
@@ -616,6 +632,10 @@ export const notificationService = {
       : 0;
     targetDate.setUTCDate(targetDate.getUTCDate() + daysBefore);
     const birthdayDateKey = formatDateKeyInTimeZone(targetDate);
+    const sendDayStart = new Date(now);
+    sendDayStart.setUTCHours(0, 0, 0, 0);
+    const sendDayEnd = new Date(now);
+    sendDayEnd.setUTCHours(23, 59, 59, 999);
     const membersWithBirthdays = await Member.find({
       dateOfBirth: { $type: "date" },
     }).select("firstName lastName email phone dateOfBirth");
@@ -630,59 +650,77 @@ export const notificationService = {
       return;
     }
 
-    const allMemberEmails = await getMemberEmails();
-    const allMemberPhones = await getMemberPhones();
+    const allCongregationMembers = await Member.find({ phone: { $exists: true, $ne: "" } }).select(
+      "firstName lastName phone departments department"
+    );
+    const celebrantNames = birthdayMembers.map((member) => memberDisplayName(member));
+    const celebrantPhones = uniquePhones(
+      birthdayMembers.map((member) => String(member.phone || "").trim())
+    );
+    const congregationSmsMessage = applyBirthdayBroadcastTemplateWithPhone(
+      config.birthdayCongregationSmsTemplate,
+      formatReadableList(celebrantNames) || celebrantNames[0] || "our celebrant(s)",
+      config.churchName,
+      celebrantPhones.join(", ") || "N/A"
+    );
+    const broadcastSmsRecipientId = `birthday-broadcast-${birthdayDateKey}`;
+    const congregationRecipientEntries = allCongregationMembers
+      .map((congregationMember) => {
+        const recipientPhone = normalizePhoneForArkesel(String(congregationMember.phone || ""));
+        return {
+          member: congregationMember,
+          recipientPhone,
+          recipientLogId: recipientPhone ? getBirthdayBroadcastRecipientId(birthdayDateKey, recipientPhone) : "",
+        };
+      })
+      .filter((entry) => entry.recipientPhone && !celebrantPhones.includes(entry.recipientPhone));
 
-    for (const member of birthdayMembers) {
-      const celebrantLog = await BirthdayEmailLog.findOne({ memberId: member._id, dateKey: birthdayDateKey });
+    const sentBroadcastLogs =
+      congregationRecipientEntries.length === 0
+        ? []
+        : await SmsLog.find({
+            recipientId: { $in: congregationRecipientEntries.map((entry) => entry.recipientLogId) },
+            type: "birthday_broadcast",
+            status: "sent",
+          }).select("recipientId");
+    const sentBroadcastRecipientIds = new Set(sentBroadcastLogs.map((log) => log.recipientId));
+    const recipientsToSend = congregationRecipientEntries.filter(
+      (entry) => !sentBroadcastRecipientIds.has(entry.recipientLogId)
+    );
+    const existingBroadcastSummaryLog = await SmsLog.findOne({
+      recipientId: broadcastSmsRecipientId,
+      type: "birthday_broadcast",
+    }).select("_id");
 
-      const fullName = memberDisplayName(member);
-      const celebrantMessage = applyBirthdayTemplate(
-        config.birthdayMessageTemplate,
-        fullName,
-        config.churchName
-      );
-      const congregationSmsMessage = applyBirthdayBroadcastTemplateWithPhone(
-        config.birthdayCongregationSmsTemplate,
-        fullName,
-        config.churchName,
-        String(member.phone || "").trim() || "N/A"
-      );
-      const celebrantEmail = String(member.email || "").trim();
-      const others = celebrantEmail
-        ? allMemberEmails.filter((email) => email.toLowerCase() !== celebrantEmail.toLowerCase())
-        : allMemberEmails;
-      const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
-      const otherPhones = celebrantPhone
-        ? allMemberPhones.filter((phone) => phone !== celebrantPhone)
-        : allMemberPhones;
-      const broadcastSmsRecipientId = `birthday-broadcast-${member._id}-${birthdayDateKey}`;
+    if (
+      config.smsEnabled &&
+      config.smsProvider === "arkesel" &&
+      config.smsSenderId &&
+      recipientsToSend.length > 0
+    ) {
+      try {
+        const resolvedKey = await resolveArkeselApiKey({
+          configuredApiKey: config.smsApiKey,
+          fallbackApiKey: env.ARKESEL_API_KEY,
+        });
 
-      const existingBroadcastSmsLog = await SmsLog.findOne({
-        recipientId: broadcastSmsRecipientId,
-        type: "birthday_broadcast",
-        status: "sent",
-      }).select("_id");
+        const broadcastResults: Array<{ phone: string; sent: boolean; failureReason?: string }> = [];
+        for (const entry of recipientsToSend) {
+          const recipientPhone = entry.recipientPhone;
+          const recipientName = memberDisplayName(entry.member);
 
-      if (!existingBroadcastSmsLog) {
-        if (config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && otherPhones.length > 0) {
           try {
-            const resolvedKey = await resolveArkeselApiKey({
-              configuredApiKey: config.smsApiKey,
-              fallbackApiKey: env.ARKESEL_API_KEY,
-            });
-
-            await sendSmsInBatches({
-              recipients: otherPhones,
+            await sendArkeselSMS({
+              apiKey: resolvedKey.apiKey,
               sender: config.smsSenderId,
               message: congregationSmsMessage,
-              apiKey: resolvedKey.apiKey,
+              recipients: [recipientPhone],
             });
 
             await createSmsLog({
-              recipientId: broadcastSmsRecipientId,
-              recipientName: `Birthday broadcast for ${fullName}`,
-              recipientPhone: "broadcast",
+              recipientId: entry.recipientLogId,
+              recipientName: recipientName || recipientPhone,
+              recipientPhone,
               message: congregationSmsMessage,
               type: "birthday_broadcast",
               status: "sent",
@@ -690,84 +728,211 @@ export const notificationService = {
               createdBy: "system",
             });
 
-            console.log("[Birthday] congregation SMS sent", {
-              memberId: String(member._id),
-              member: fullName,
-              birthdayDateKey,
-              smsRecipientCount: otherPhones.length,
-            });
-          } catch (error) {
-            const failureReason = error instanceof Error ? error.message : "Birthday broadcast SMS failed";
+            broadcastResults.push({ phone: recipientPhone, sent: true });
+          } catch (recipientError) {
+            const failureReason =
+              recipientError instanceof Error ? recipientError.message : "Birthday broadcast SMS failed";
             await createSmsLog({
-              recipientId: broadcastSmsRecipientId,
-              recipientName: `Birthday broadcast for ${fullName}`,
-              recipientPhone: "broadcast",
+              recipientId: entry.recipientLogId,
+              recipientName: recipientName || recipientPhone,
+              recipientPhone,
               message: congregationSmsMessage,
               type: "birthday_broadcast",
               status: "failed",
               failureReason,
               createdBy: "system",
             });
-            console.error("[Birthday] congregation SMS failed", {
-              memberId: String(member._id),
-              member: fullName,
+            broadcastResults.push({ phone: recipientPhone, sent: false, failureReason });
+            console.error("[Birthday] congregation SMS recipient failed", {
               birthdayDateKey,
+              recipientPhone,
               failureReason,
             });
           }
-        } else {
-          const reason = !config.smsEnabled
-            ? "Skipped: SMS is disabled in settings"
-            : config.smsProvider !== "arkesel"
-            ? "Skipped: SMS provider is not Arkesel"
-            : !config.smsSenderId
-            ? "Skipped: SMS sender ID is not configured"
-            : "Skipped: no recipient phones on file";
-          console.warn(`Birthday congregation SMS skipped for "${fullName}": ${reason}`);
+        }
+
+        const successfulCount = broadcastResults.filter((result) => result.sent).length;
+        const failedPhones = broadcastResults.filter((result) => !result.sent).map((result) => result.phone);
+
+        if (!existingBroadcastSummaryLog) {
           await createSmsLog({
             recipientId: broadcastSmsRecipientId,
-            recipientName: `Birthday broadcast for ${fullName}`,
+            recipientName: `Birthday broadcast for ${formatReadableList(celebrantNames) || celebrantNames[0] || "birthday celebrant(s)"}`,
             recipientPhone: "broadcast",
             message: congregationSmsMessage,
             type: "birthday_broadcast",
-            status: "skipped",
-            failureReason: reason,
+            status: successfulCount > 0 ? "sent" : "failed",
+            sentAt: successfulCount > 0 ? new Date() : undefined,
+            failureReason:
+              failedPhones.length > 0
+                ? successfulCount > 0
+                  ? `Some recipients failed: ${failedPhones.join(", ")}`
+                  : `All recipients failed: ${failedPhones.join(", ")}`
+                : undefined,
             createdBy: "system",
           });
         }
-      } else {
-        console.log("[Birthday] congregation SMS skipped: already processed", {
-          memberId: String(member._id),
+
+        console.log("[Birthday] congregation SMS processed", {
           birthdayDateKey,
+          celebrantCount: birthdayMembers.length,
+          smsRecipientCount: congregationRecipientEntries.length,
+          successfulRecipients: successfulCount,
+          failedRecipients: failedPhones.length,
+          alreadySentRecipients: congregationRecipientEntries.length - recipientsToSend.length,
+        });
+      } catch (error) {
+        const failureReason = error instanceof Error ? error.message : "Birthday broadcast SMS failed";
+        if (!existingBroadcastSummaryLog) {
+          await createSmsLog({
+            recipientId: broadcastSmsRecipientId,
+            recipientName: `Birthday broadcast for ${formatReadableList(celebrantNames) || celebrantNames[0] || "birthday celebrant(s)"}`,
+            recipientPhone: "broadcast",
+            message: congregationSmsMessage,
+            type: "birthday_broadcast",
+            status: "failed",
+            failureReason,
+            createdBy: "system",
+          });
+        }
+        console.error("[Birthday] congregation SMS failed", {
+          birthdayDateKey,
+          failureReason,
         });
       }
+    } else {
+      const reason = !config.smsEnabled
+        ? "Skipped: SMS is disabled in settings"
+        : config.smsProvider !== "arkesel"
+        ? "Skipped: SMS provider is not Arkesel"
+        : !config.smsSenderId
+        ? "Skipped: SMS sender ID is not configured"
+        : congregationRecipientEntries.length === 0
+        ? "Skipped: no recipient phones on file"
+        : "Skipped: all congregation recipients already processed";
+      console.warn(`Birthday congregation SMS skipped: ${reason}`);
+      if (!existingBroadcastSummaryLog) {
+        await createSmsLog({
+          recipientId: broadcastSmsRecipientId,
+          recipientName: `Birthday broadcast for ${formatReadableList(celebrantNames) || celebrantNames[0] || "birthday celebrant(s)"}`,
+          recipientPhone: "broadcast",
+          message: congregationSmsMessage,
+          type: "birthday_broadcast",
+          status: "skipped",
+          failureReason: reason,
+          createdBy: "system",
+        });
+      }
+    }
 
-      if (!celebrantLog && celebrantEmail) {
-        await safeSend(
-          () =>
-            emailService.send({
-              to: celebrantEmail,
-              subject: `Happy Birthday, ${fullName}!`,
-              text: celebrantMessage,
-              html: buildBrandedEmail({
-                churchName: config.churchName,
-                title: `Happy Birthday, ${fullName}!`,
-                message: celebrantMessage,
-                previewText: `Birthday wishes from ${config.churchName}`,
-              }),
+    for (const member of birthdayMembers) {
+      const celebrantSmsRecipientId = getBirthdaySmsRecipientId(String(member._id), birthdayDateKey);
+      const celebrantEmailLog = await BirthdayEmailLog.findOne({
+        memberId: member._id,
+        dateKey: birthdayDateKey,
+      });
+      const celebrantSmsLog = await SmsLog.findOne({
+        recipientId: celebrantSmsRecipientId,
+        type: "birthday",
+        status: "sent",
+      }).select("_id");
+      const legacyCelebrantSmsLog = celebrantSmsLog
+        ? null
+        : await SmsLog.findOne({
+            recipientId: String(member._id || ""),
+            type: "birthday",
+            status: "sent",
+            sentAt: { $gte: sendDayStart, $lte: sendDayEnd },
+          }).select("_id");
+      const celebrantSentSmsLog = celebrantSmsLog || legacyCelebrantSmsLog;
+
+      const fullName = memberDisplayName(member);
+      const celebrantMessage = applyBirthdayTemplate(
+        config.birthdayMessageTemplate,
+        fullName,
+        config.churchName
+      );
+      const celebrantEmail = String(member.email || "").trim();
+      const celebrantPhone = normalizePhoneForArkesel(String(member.phone || ""));
+
+      if (!celebrantEmailLog && celebrantEmail) {
+        try {
+          await emailService.send({
+            to: celebrantEmail,
+            subject: `Happy Birthday, ${fullName}!`,
+            text: celebrantMessage,
+            html: buildBrandedEmail({
+              churchName: config.churchName,
+              title: `Happy Birthday, ${fullName}!`,
+              message: celebrantMessage,
+              previewText: `Birthday wishes from ${config.churchName}`,
             }),
-          "birthday celebrant"
-        );
+          });
+
+          await BirthdayEmailLog.create({
+            memberId: member._id,
+            dateKey: birthdayDateKey,
+          });
+        } catch (error) {
+          console.error("Notification send failed: birthday celebrant email", error);
+        }
       } else if (!celebrantEmail) {
         console.warn(`Birthday email skipped for "${fullName}": no email on member record`);
-      } else {
+      } else if (celebrantEmailLog) {
         console.log("[Birthday] celebrant email skipped: already processed", {
           memberId: String(member._id),
           birthdayDateKey,
         });
       }
 
-      if (!celebrantLog && config.smsEnabled && config.smsProvider === "arkesel" && config.smsSenderId && celebrantPhone) {
+      if (celebrantSentSmsLog) {
+        console.log("[Birthday] celebrant SMS skipped: already processed", {
+          memberId: String(member._id),
+          birthdayDateKey,
+        });
+      } else if (!celebrantPhone) {
+        const reason = "Skipped: no phone number on member record";
+        console.warn(`Birthday SMS skipped for "${fullName}": ${reason}`);
+        const existingSkippedLog = await SmsLog.findOne({
+          recipientId: celebrantSmsRecipientId,
+          type: "birthday",
+        }).select("_id");
+        if (!existingSkippedLog) {
+          await createSmsLog({
+            recipientId: celebrantSmsRecipientId,
+            recipientName: fullName || celebrantPhone || "Birthday celebrant",
+            recipientPhone: "N/A",
+            message: celebrantMessage,
+            type: "birthday",
+            status: "skipped",
+            failureReason: reason,
+            createdBy: "system",
+          });
+        }
+      } else if (!config.smsEnabled || config.smsProvider !== "arkesel" || !config.smsSenderId) {
+        const reason = !config.smsEnabled
+          ? "Skipped: SMS is disabled in settings"
+          : config.smsProvider !== "arkesel"
+          ? "Skipped: SMS provider is not Arkesel"
+          : "Skipped: SMS sender ID is not configured";
+        console.warn(`Birthday SMS skipped for "${fullName}": ${reason}`);
+        const existingSkippedLog = await SmsLog.findOne({
+          recipientId: celebrantSmsRecipientId,
+          type: "birthday",
+        }).select("_id");
+        if (!existingSkippedLog) {
+          await createSmsLog({
+            recipientId: celebrantSmsRecipientId,
+            recipientName: fullName || celebrantPhone || "Birthday celebrant",
+            recipientPhone: celebrantPhone,
+            message: celebrantMessage,
+            type: "birthday",
+            status: "skipped",
+            failureReason: reason,
+            createdBy: "system",
+          });
+        }
+      } else {
         try {
           const resolvedKey = await resolveArkeselApiKey({
             configuredApiKey: config.smsApiKey,
@@ -782,7 +947,7 @@ export const notificationService = {
           });
 
           await createSmsLog({
-            recipientId: String(member._id || celebrantPhone),
+            recipientId: celebrantSmsRecipientId,
             recipientName: fullName || celebrantPhone,
             recipientPhone: celebrantPhone,
             message: celebrantMessage,
@@ -794,7 +959,7 @@ export const notificationService = {
         } catch (error) {
           const failureReason = error instanceof Error ? error.message : "SMS delivery failed";
           await createSmsLog({
-            recipientId: String(member._id || celebrantPhone),
+            recipientId: celebrantSmsRecipientId,
             recipientName: fullName || celebrantPhone,
             recipientPhone: celebrantPhone,
             message: celebrantMessage,
@@ -805,37 +970,6 @@ export const notificationService = {
           });
           console.error("Notification send failed: birthday celebrant sms", error);
         }
-      } else if (celebrantLog) {
-        console.log("[Birthday] celebrant SMS skipped: already processed", {
-          memberId: String(member._id),
-          birthdayDateKey,
-        });
-      } else {
-        const reason = !celebrantPhone
-          ? "Skipped: no phone number on member record"
-          : !config.smsEnabled
-          ? "Skipped: SMS is disabled in settings"
-          : config.smsProvider !== "arkesel"
-          ? "Skipped: SMS provider is not Arkesel"
-          : "Skipped: SMS sender ID is not configured";
-        console.warn(`Birthday SMS skipped for "${fullName}": ${reason}`);
-        await createSmsLog({
-          recipientId: String(member._id || celebrantPhone || fullName),
-          recipientName: fullName || celebrantPhone || "Birthday celebrant",
-          recipientPhone: celebrantPhone || "N/A",
-          message: celebrantMessage,
-          type: "birthday",
-          status: "skipped",
-          failureReason: reason,
-          createdBy: "system",
-        });
-      }
-
-      if (!celebrantLog) {
-        await BirthdayEmailLog.create({
-          memberId: member._id,
-          dateKey: birthdayDateKey,
-        });
       }
 
       console.log("[Birthday] processed", {

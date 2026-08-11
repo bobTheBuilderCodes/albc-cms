@@ -70,7 +70,7 @@ export interface ChurchProgram {
   updatedAt: string;
 }
 
-export type AutomationConditionType = 'weekly' | 'monthly' | 'custom';
+export type AutomationConditionType = 'weekly' | 'monthly' | 'custom' | 'one_time';
 export type AutomationAudienceType = 'all' | 'department' | 'manual';
 
 export interface Automation {
@@ -87,6 +87,7 @@ export interface Automation {
   dayOfWeek?: string[];
   dayOfMonth?: number;
   customRule?: string;
+  oneTimeDate?: string;
   sendTime?: string;
   isActive: boolean;
   description?: string;

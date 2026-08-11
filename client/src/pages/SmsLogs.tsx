@@ -110,6 +110,11 @@ export function SmsLogs() {
     return type.replace('_', ' ');
   };
 
+  const getBirthdayBroadcastLabel = (log: SMSLog) => {
+    if (log.type !== 'birthday_broadcast') return null;
+    return log.recipientPhone === 'broadcast' ? 'Birthday broadcast summary' : 'Birthday broadcast recipient';
+  };
+
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -240,6 +245,21 @@ export function SmsLogs() {
                       }`}>
                         {formatSmsType(log.type)}
                       </span>
+                      {getBirthdayBroadcastLabel(log) && (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                            log.recipientPhone === 'broadcast'
+                              ? theme === 'dark'
+                                ? 'bg-slate-700 text-slate-200'
+                                : 'bg-neutral-200 text-neutral-700'
+                              : theme === 'dark'
+                              ? 'bg-primary-950/60 text-primary-200'
+                              : 'bg-primary-50 text-primary-700'
+                          }`}
+                        >
+                          {getBirthdayBroadcastLabel(log)}
+                        </span>
+                      )}
                     </div>
 
                     <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-neutral-700'}`}>{log.message}</p>
@@ -297,6 +317,21 @@ export function SmsLogs() {
                           }`}>
                             {formatSmsType(log.type)}
                           </span>
+                          {getBirthdayBroadcastLabel(log) && (
+                            <div
+                              className={`mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                                log.recipientPhone === 'broadcast'
+                                  ? theme === 'dark'
+                                    ? 'bg-slate-700 text-slate-200'
+                                    : 'bg-neutral-200 text-neutral-700'
+                                  : theme === 'dark'
+                                  ? 'bg-primary-950/60 text-primary-200'
+                                  : 'bg-primary-50 text-primary-700'
+                              }`}
+                            >
+                              {getBirthdayBroadcastLabel(log)}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="space-y-1">
